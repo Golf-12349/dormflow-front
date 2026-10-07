@@ -400,6 +400,67 @@ export const lo = {
         noActiveLease: "ບໍ່ມີສັນຍາທີ່ກຳລັງມີຜົນບັງຄັບໃຊ້ຢູ່",
       },
     },
+    /** 6.5 — cancel button shared by the add-tenant and edit-contact forms. */
+    cancel: "ຍົກເລີກ",
+    /** 6.5 — "add tenant" trigger + expandable form above the table. */
+    add: {
+      trigger: "ເພີ່ມຜູ້ເຊົ່າ",
+      title: "ເພີ່ມຜູ້ເຊົ່າໃໝ່",
+      /** The only field label not already covered by `profile.fields`. */
+      fullName: "ຊື່ເຕັມ",
+      submit: "ບັນທຶກຜູ້ເຊົ່າ",
+      saving: "ກຳລັງບັນທຶກ…",
+      success: (name: string) => `ເພີ່ມຜູ້ເຊົ່າ ${name} ແລ້ວ.`,
+    },
+    /** 6.5 — "edit contact" form inside the 6.3 profile drawer. */
+    editContact: {
+      trigger: "ດັດແກ້ຂໍ້ມູນຕິດຕໍ່",
+      submit: "ບັນທຶກ",
+      saving: "ກຳລັງບັນທຶກ…",
+      success: (name: string) => `ບັນທຶກຂໍ້ມູນຕິດຕໍ່ຂອງ ${name} ແລ້ວ.`,
+    },
+    /** 6.5 — server-side validation + data-layer errors for both mutations. */
+    errors: {
+      fullNameRequired: "ກະລຸນາປ້ອນຊື່ເຕັມ.",
+      emailRequired: "ກະລຸນາປ້ອນອີເມວ.",
+      emailInvalid: "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ.",
+      phoneRequired: "ກະລຸນາປ້ອນເບີໂທ.",
+      idCardRequired: "ກະລຸນາປ້ອນເລກບັດປະຊາຊົນ.",
+      occupationRequired: "ກະລຸນາປ້ອນອາຊີບ.",
+      emergencyNameRequired: "ກະລຸນາປ້ອນຊື່ຜູ້ຕິດຕໍ່ສຸກເສີນ.",
+      emergencyRelationshipRequired:
+        "ກະລຸນາປ້ອນຄວາມສຳພັນຂອງຜູ້ຕິດຕໍ່ສຸກເສີນ.",
+      emergencyPhoneRequired: "ກະລຸນາປ້ອນເບີໂທຜູ້ຕິດຕໍ່ສຸກເສີນ.",
+      tenantIdRequired: "ຕ້ອງມີລະຫັດຜູ້ເຊົ່າ.",
+      tenantNotFound: "ບໍ່ພົບຜູ້ເຊົ່າ.",
+      roomNotFound: "ບໍ່ພົບຫ້ອງ.",
+      roomNotVacant: (roomNumber: string) => `ຫ້ອງ ${roomNumber} ບໍ່ວ່າງ.`,
+      checkOutRequiresActive:
+        "ມີແຕ່ຜູ້ເຊົ່າທີ່ກຳລັງເຊົ່າເທົ່ານັ້ນທີ່ເຊັກເອົາອອກໄດ້.",
+      checkOutRequiresRoom:
+        "ຜູ້ເຊົ່ານີ້ຍັງບໍ່ມີຫ້ອງ, ຈຶ່ງເຊັກເອົາອອກບໍ່ໄດ້.",
+      roomNotOccupied: (roomNumber: string) =>
+        `ຫ້ອງ ${roomNumber} ບໍ່ແມ່ນຫ້ອງທີ່ມີຜູ້ເຊົ່າຢູ່.`,
+    },
+    /** 6.5 — check-out: destructive, confirmation required, two records move. */
+    checkOut: {
+      sectionTitle: "ການເຊັກເອົາອອກ",
+      hint: "ການເຊັກເອົາອອກຈະປ່ອຍຫ້ອງນີ້ວ່າງ ແລະປ່ຽນສະຖານະຜູ້ເຊົ່າເປັນ ຢຸດເຊົ່າ.",
+      trigger: "ເຊັກເອົາອອກ",
+      confirmPrompt: (name: string) =>
+        `ທ່ານແນ່ໃຈບໍ່ວ່າຈະເຊັກ ${name} ອອກ? ການກະທຳນີ້ຈະປ່ອຍຫ້ອງວ່າງ ແລະບໍ່ສາມາດຍົກເລີກໄດ້.`,
+      confirm: "ແນ່ໃຈ, ເຊັກເອົາອອກ",
+      saving: "ກຳລັງດຳເນີນການ…",
+      success: (name: string, roomNumber: string) =>
+        `ເຊັກ ${name} ອອກແລ້ວ — ຫ້ອງ ${roomNumber} ກັບເປັນຫ້ອງວ່າງແລ້ວ.`,
+    },
+    /** 6.6 — per-row overflow (kebab) menu. */
+    rowMenu: {
+      /** sr-only header for the action column. */
+      actions: "ການກະທຳ",
+      triggerLabel: (name: string) => `ການກະທຳຂອງ ${name}`,
+      viewProfile: "ເບິ່ງໂປຣໄຟລ໌",
+    },
   },
 } as const;
 

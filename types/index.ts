@@ -115,6 +115,24 @@ export interface Tenant {
   emergencyContact: EmergencyContact;
 }
 
+/** State returned by the "add tenant" mutation Server Action (Phase 6.5). */
+export interface AddTenantFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+}
+
+/** State returned by the "edit contact" mutation Server Action (Phase 6.5). */
+export interface EditContactFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+}
+
+/** State returned by the "check out tenant" mutation Server Action (Phase 6.5). */
+export interface CheckOutTenantFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Utilities & billing                                                        */
 /* -------------------------------------------------------------------------- */

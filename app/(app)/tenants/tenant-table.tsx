@@ -12,6 +12,7 @@ import {
   formatDate,
 } from "@/lib/utils";
 import { TenantDetailDrawer } from "./tenant-detail-drawer";
+import { TenantRowMenu } from "./tenant-row-menu";
 import type { Invoice, Room, Tenant, TenantStatus } from "@/types";
 
 type SortKey = "name" | "balance" | "leaseEnd";
@@ -348,6 +349,9 @@ export function TenantTable({
                   <th scope="col" className="px-5 py-3">
                     {t.tenants.fields.status}
                   </th>
+                  <th scope="col" className="px-3 py-3 text-right">
+                    <span className="sr-only">{t.tenants.rowMenu.actions}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -363,6 +367,11 @@ export function TenantTable({
                       openTenant(tenant.id, event.currentTarget)
                     }
                     onKeyDown={(event) => {
+                      // Keys originating inside the row menu (Enter/Space on a
+                      // menu control) must not open the drawer — only when the
+                      // row itself holds focus. Escape still bubbles, so the
+                      // menu's own document listener keeps working.
+                      if (event.target !== event.currentTarget) return;
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         openTenant(tenant.id, event.currentTarget);
@@ -414,6 +423,9 @@ export function TenantTable({
                       >
                         {TENANT_STATUS_LABELS[tenant.status]}
                       </span>
+                    </td>
+                    <td className="px-3 py-3.5 text-right">
+                      <TenantRowMenu tenant={tenant} onOpen={openTenant} />
                     </td>
                   </tr>
                 ))}

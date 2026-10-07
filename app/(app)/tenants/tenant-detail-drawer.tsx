@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
-import { X } from "lucide-react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  LogOut,
+  Pencil,
+  Save,
+  X,
+} from "lucide-react";
 
+import {
+  checkOutTenantAction,
+  updateTenantContactAction,
+} from "@/lib/actions/tenants";
 import { t } from "@/lib/i18n";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -14,7 +26,14 @@ import {
   formatDate,
   formatPeriod,
 } from "@/lib/utils";
-import type { Invoice, Room, Tenant } from "@/types";
+import type {
+  CheckOutTenantFormState,
+  EditContactFormState,
+  Invoice,
+  Room,
+  Tenant,
+} from "@/types";
+import { TenantFormField } from "./tenant-form-field";
 
 interface TenantDetailDrawerProps {
   tenant: Tenant;
@@ -46,6 +65,18 @@ const LEASE_EXPIRING_SOON_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 
+/** 6.5 — "edit contact" action state (same shape as `RoomStatusFormState`). */
+const INITIAL_EDIT_CONTACT_STATE: EditContactFormState = {
+  status: "idle",
+  message: null,
+};
+
+/** 6.5 — "check out tenant" action state. */
+const INITIAL_CHECK_OUT_STATE: CheckOutTenantFormState = {
+  status: "idle",
+  message: null,
+};
+
 /** Section heading style, mirroring `rooms/room-detail-drawer.tsx`. */
 const SECTION_TITLE =
   "text-xs font-semibold tracking-wide text-slate-500 uppercase";
@@ -64,7 +95,8 @@ const DD_CLASSES = "font-medium text-slate-900";
  * Structural clone of `rooms/room-detail-drawer.tsx`: same `z-40` overlay,
  * `bg-slate-900/50 backdrop-blur-sm` backdrop, focus moved into the panel on
  * open and handed back to the triggering row on close, Escape and backdrop
- * closing — so both drawers behave and feel alike.
+ * closing — so both drawers behave and feel alike. The contact section doubles
+ * as the 6.5 "edit contact" form (same `useActionState` pattern as 5.7).
  */
 export function TenantDetailDrawer({
   tenant,
@@ -75,6 +107,18 @@ export function TenantDetailDrawer({
 }: TenantDetailDrawerProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  /** 6.5 — the contact section flips into an inline edit form. */
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [contactState, contactFormAction, contactPending] = useActionState(
+    updateTenantContactAction,
+    INITIAL_EDIT_CONTACT_STATE,
+  );
+
+  /** 6.5 — destructive check-out: destructive button → confirmation step. */
+  const [isConfirmingCheckOut, setIsConfirmingCheckOut] = useState(false);
+  const [checkOutState, checkOutFormAction, checkOutPending] =
+    useActionState(checkOutTenantAction, INITIAL_CHECK_OUT_STATE);
 
   /** Focus moves into the drawer as soon as it opens. */
   useEffect(() => {
@@ -111,6 +155,9 @@ export function TenantDetailDrawer({
         : 100,
     daysLeft: Math.ceil((endMs - nowMs) / DAY_MS),
   };
+
+  /** 6.5 — only an active tenant occupying a room can be checked out. */
+  const canCheckOut = tenant.status === "active" && tenant.roomId !== null;
 
   return (
     <div
@@ -162,11 +209,129 @@ export function TenantDetailDrawer({
         </div>
 
         <div className="space-y-6 p-5">
-          {/* Contact */}
+          {/* Contact — 6.5: flips into an inline edit form (emergency fields included) */}
           <section>
-            <h3 className={SECTION_TITLE}>
-              {t.tenants.profile.sections.contact}
-            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className={SECTION_TITLE}>
+                {t.tenants.profile.sections.contact}
+              </h3>
+              {!isEditingContact ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingContact(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  {t.tenants.editContact.trigger}
+                </button>
+              ) : null}
+            </div>
+
+            {isEditingContact ? (
+              <form
+                action={contactFormAction}
+                className="mt-3 space-y-3"
+                noValidate
+              >
+                <input type="hidden" name="tenantId" value={tenant.id} />
+
+                <TenantFormField
+                  id="contact-email"
+                  name="email"
+                  label={t.tenants.profile.fields.email}
+                  type="email"
+                  defaultValue={tenant.email}
+                  autoComplete="email"
+                />
+                <TenantFormField
+                  id="contact-phone"
+                  name="phone"
+                  label={t.tenants.profile.fields.phone}
+                  type="tel"
+                  defaultValue={tenant.phone}
+                  autoComplete="tel"
+                />
+
+                <p className="pt-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                  {t.tenants.profile.sections.emergency}
+                </p>
+                <TenantFormField
+                  id="contact-ec-name"
+                  name="emergencyName"
+                  label={t.tenants.profile.fields.contactName}
+                  defaultValue={tenant.emergencyContact.name}
+                />
+                <TenantFormField
+                  id="contact-ec-relationship"
+                  name="emergencyRelationship"
+                  label={t.tenants.profile.fields.relationship}
+                  defaultValue={tenant.emergencyContact.relationship}
+                />
+                <TenantFormField
+                  id="contact-ec-phone"
+                  name="emergencyPhone"
+                  label={t.tenants.profile.fields.phone}
+                  type="tel"
+                  defaultValue={tenant.emergencyContact.phone}
+                />
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingContact(false)}
+                    className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                  >
+                    {t.tenants.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={contactPending}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {contactPending ? (
+                      <>
+                        <Loader2
+                          className="size-3.5 animate-spin"
+                          aria-hidden="true"
+                        />
+                        <span>{t.tenants.editContact.saving}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="size-3.5" aria-hidden="true" />
+                        <span>{t.tenants.editContact.submit}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {contactState.status !== "idle" && contactState.message ? (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                      "flex items-start gap-2 rounded-xl border p-3 text-xs",
+                      contactState.status === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-rose-200 bg-rose-50 text-rose-700",
+                    )}
+                  >
+                    {contactState.status === "success" ? (
+                      <CheckCircle2
+                        className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <AlertCircle
+                        className="mt-0.5 size-4 shrink-0 text-rose-500"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <p>{contactState.message}</p>
+                  </div>
+                ) : null}
+              </form>
+            ) : (
             <dl className="mt-3 space-y-2 text-sm">
               <div className={ROW_CLASSES}>
                 <dt className={DT_CLASSES}>{t.tenants.profile.fields.email}</dt>
@@ -182,7 +347,8 @@ export function TenantDetailDrawer({
                 </dt>
                 <dd className={DD_CLASSES}>{tenant.idCard}</dd>
               </div>
-            </dl>
+              </dl>
+            )}
           </section>
 
           {/* Room info — number via the `rooms` prop, or 6.1's no-room placeholder */}
@@ -296,34 +462,41 @@ export function TenantDetailDrawer({
             )}
           </section>
 
-          {/* Emergency contact */}
-          <section>
-            <h3 className={SECTION_TITLE}>
-              {t.tenants.profile.sections.emergency}
-            </h3>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>
-                  {t.tenants.profile.fields.contactName}
-                </dt>
-                <dd className={DD_CLASSES}>{tenant.emergencyContact.name}</dd>
-              </div>
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>
-                  {t.tenants.profile.fields.relationship}
-                </dt>
-                <dd className={DD_CLASSES}>
-                  {tenant.emergencyContact.relationship}
-                </dd>
-              </div>
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>
-                  {t.tenants.profile.fields.phone}
-                </dt>
-                <dd className={DD_CLASSES}>{tenant.emergencyContact.phone}</dd>
-              </div>
-            </dl>
-          </section>
+          {/* Emergency contact — its fields live in the edit form above, so the
+              read-only rows step aside while the contact form is open. */}
+          {!isEditingContact ? (
+            <section>
+              <h3 className={SECTION_TITLE}>
+                {t.tenants.profile.sections.emergency}
+              </h3>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>
+                    {t.tenants.profile.fields.contactName}
+                  </dt>
+                  <dd className={DD_CLASSES}>
+                    {tenant.emergencyContact.name}
+                  </dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>
+                    {t.tenants.profile.fields.relationship}
+                  </dt>
+                  <dd className={DD_CLASSES}>
+                    {tenant.emergencyContact.relationship}
+                  </dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>
+                    {t.tenants.profile.fields.phone}
+                  </dt>
+                  <dd className={DD_CLASSES}>
+                    {tenant.emergencyContact.phone}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
 
           {/* Invoice ledger — already filtered + sorted newest first by the table */}
           <section>
@@ -374,6 +547,109 @@ export function TenantDetailDrawer({
               </div>
             )}
           </section>
+
+          {/* 6.5 — check-out: destructive, confirmation required (two records
+              move at once: tenant → inactive, room → vacant). Only offered to
+              active tenants with a room; a successful result is shown even
+              once the tenant's status flip hides the button again. */}
+          {canCheckOut || checkOutState.status === "success" ? (
+            <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4">
+              <h3 className={cn(SECTION_TITLE, "text-rose-700")}>
+                {t.tenants.checkOut.sectionTitle}
+              </h3>
+
+              {checkOutState.status === "success" ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"
+                >
+                  <CheckCircle2
+                    className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                    aria-hidden="true"
+                  />
+                  <p>{checkOutState.message}</p>
+                </div>
+              ) : !isConfirmingCheckOut ? (
+                <>
+                  <p className="mt-2 text-xs text-slate-600">
+                    {t.tenants.checkOut.hint}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingCheckOut(true)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
+                  >
+                    <LogOut className="size-3.5" aria-hidden="true" />
+                    {t.tenants.checkOut.trigger}
+                  </button>
+                </>
+              ) : (
+                <form
+                  action={checkOutFormAction}
+                  className="mt-3 space-y-3"
+                  noValidate
+                >
+                  <input
+                    type="hidden"
+                    name="tenantId"
+                    value={tenant.id}
+                  />
+
+                  <p className="text-sm text-slate-700">
+                    {t.tenants.checkOut.confirmPrompt(tenant.fullName)}
+                  </p>
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingCheckOut(false)}
+                      className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-white"
+                    >
+                      {t.tenants.cancel}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={checkOutPending}
+                      className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {checkOutPending ? (
+                        <>
+                          <Loader2
+                            className="size-3.5 animate-spin"
+                            aria-hidden="true"
+                          />
+                          <span>{t.tenants.checkOut.saving}</span>
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="size-3.5" aria-hidden="true" />
+                          <span>{t.tenants.checkOut.confirm}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {checkOutState.status !== "idle" && checkOutState.message ? (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className={cn(
+                        "flex items-start gap-2 rounded-xl border p-3 text-xs",
+                        "border-rose-200 bg-rose-50 text-rose-700",
+                      )}
+                    >
+                      <AlertCircle
+                        className="mt-0.5 size-4 shrink-0 text-rose-500"
+                        aria-hidden="true"
+                      />
+                      <p>{checkOutState.message}</p>
+                    </div>
+                  ) : null}
+                </form>
+              )}
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

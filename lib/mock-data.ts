@@ -20,6 +20,7 @@ import type {
   AdminUser,
   BillingPeriod,
   DashboardMetrics,
+  EmergencyContact,
   FloorOccupancy,
   Invoice,
   InvoiceFilters,
@@ -107,11 +108,13 @@ const KITCHEN_AMENITIES = [...BASIC_AMENITIES, "Kitchenette"];
 const SUITE_AMENITIES = [...KITCHEN_AMENITIES, "Balcony", "Living area"];
 
 /**
- * Rooms are kept on globalThis so mock mutations survive module re-evaluations
- * across Server Action invocations and subsequent page renders.
+ * Collections that support mutations are kept on globalThis so mock writes
+ * survive module re-evaluations across Server Action invocations and
+ * subsequent page renders.
  */
 declare global {
   var __dms_mock_rooms: Room[] | undefined;
+  var __dms_mock_tenants: Tenant[] | undefined;
 }
 
 const SEED_ROOMS: Room[] = [
@@ -147,7 +150,7 @@ const ROOMS: Room[] = (globalThis.__dms_mock_rooms ??= structuredClone(SEED_ROOM
  * Tenants. `roomId` matches the room they rent; TEN-014 is a pending applicant
  * without a room yet, which keeps the "pending" empty-ish state exercised.
  */
-const TENANTS: Tenant[] = [
+const SEED_TENANTS: Tenant[] = [
   {
     id: "TEN-001",
     fullName: "Amara Okafor",
@@ -260,6 +263,8 @@ const TENANTS: Tenant[] = [
     emergencyContact: { name: "Meera Sharma", relationship: "Mother", phone: "+1-202-555-0291" },
   },
 ];
+
+const TENANTS: Tenant[] = (globalThis.__dms_mock_tenants ??= structuredClone(SEED_TENANTS));
 
 /**
  * Meter readings. September holds the full round, August is kept so the room
@@ -539,6 +544,185 @@ export async function getTenantById(id: string): Promise<Tenant | null> {
 
 export async function getTenantByRoomId(roomId: string): Promise<Tenant | null> {
   return respond(TENANTS.find((tenant) => tenant.roomId === roomId) ?? null);
+}
+
+/** Fields the "add tenant" Server Action forwards; the rest are defaulted. */
+interface CreateTenantInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  idCard: string;
+  occupation: string;
+  emergencyContact: EmergencyContact;
+  /** Optional assignment — `null`/omitted leaves the tenant pending (TEN-014). */
+  roomId?: string | null;
+}
+
+/** Local-timezone `YYYY-MM-DD` for the generated lease dates. */
+function toIsoDateString(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Creates a tenant in the in-memory mock dataset (Phase 6.5 "add tenant").
+ *
+ * Data-layer rules (the Server Action validates the form fields first):
+ *  - `id` follows the existing TEN-XXX scheme: highest existing sequence + 1,
+ *    zero-padded to three digits (TEN-001 … TEN-014 exist in the seed).
+ *  - `balance` / `deposit` default to 0; the lease window defaults to
+ *    "today → one year less a day".
+ *  - `status` follows the assignment: room given → "active", no room →
+ *    "pending" (the TEN-014 precedent for an applicant without a room).
+ *  - A supplied `roomId` must exist and be vacant; the room then flips to
+ *    "occupied" and points at the new tenant, preserving the "only occupied
+ *    rooms have a tenantId" invariant.
+ */
+export async function createTenant(
+  input: CreateTenantInput,
+): Promise<
+  { success: true; tenant: Tenant } | { success: false; error: string }
+> {
+  const room = input.roomId
+    ? (ROOMS.find((candidate) => candidate.id === input.roomId) ?? null)
+    : null;
+  if (input.roomId && !room) {
+    return respond({ success: false, error: "Room not found." });
+  }
+  if (room && room.status !== "vacant") {
+    return respond({
+      success: false,
+      error: `Room "${room.number}" is not vacant.`,
+    });
+  }
+
+  // TEN-XXX numbering: highest existing sequence + 1, zero-padded to match.
+  const maxSequence = TENANTS.reduce((max, tenant) => {
+    const match = /^TEN-(\d+)$/.exec(tenant.id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+
+  const moveInDate = new Date();
+  const leaseEndDate = new Date(moveInDate);
+  leaseEndDate.setFullYear(leaseEndDate.getFullYear() + 1);
+  leaseEndDate.setDate(leaseEndDate.getDate() - 1);
+
+  const tenant: Tenant = {
+    id: `TEN-${String(maxSequence + 1).padStart(3, "0")}`,
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone,
+    idCard: input.idCard,
+    roomId: room?.id ?? null,
+    moveInDate: toIsoDateString(moveInDate),
+    leaseEndDate: toIsoDateString(leaseEndDate),
+    status: room ? "active" : "pending",
+    balance: 0,
+    deposit: 0,
+    occupation: input.occupation,
+    emergencyContact: { ...input.emergencyContact },
+  };
+
+  TENANTS.push(tenant);
+  if (room) {
+    room.status = "occupied";
+    room.tenantId = tenant.id;
+  }
+
+  return respond({ success: true, tenant: structuredClone(tenant) });
+}
+
+/**
+ * Updates the contact fields of an existing tenant (Phase 6.5 "edit
+ * contact"): email, phone and the emergency contact. Name, id card, lease
+ * dates, money and the room assignment are deliberately not editable here.
+ */
+export async function updateTenantContact(
+  tenantId: string,
+  contact: {
+    email: string;
+    phone: string;
+    emergencyContact: EmergencyContact;
+  },
+): Promise<
+  { success: true; tenant: Tenant } | { success: false; error: string }
+> {
+  const tenant = TENANTS.find((candidate) => candidate.id === tenantId);
+  if (!tenant) {
+    return respond({ success: false, error: "Tenant not found." });
+  }
+
+  tenant.email = contact.email;
+  tenant.phone = contact.phone;
+  tenant.emergencyContact = { ...contact.emergencyContact };
+
+  return respond({ success: true, tenant: structuredClone(tenant) });
+}
+
+/**
+ * Checks a tenant out (Phase 6.5/6.6 "check-out tenant") — two records move
+ * in one mutation so both stores stay consistent:
+ *
+ *  - the tenant flips to `inactive` and its `roomId` is cleared;
+ *  - the freed room goes `occupied -> vacant` and loses its `tenantId` (plus
+ *    its `note`, exactly like `updateRoomStatus` does when a room returns to
+ *    `vacant`), so "only occupied rooms have a tenantId" still holds.
+ *
+ * The room write deliberately mirrors `updateRoomStatus` rather than calling
+ * it: that function's Phase 5.7 transition guard only permits
+ * `vacant ⇄ maintenance`, so `occupied -> vacant` would be rejected — and
+ * widening the guard would change the Phase 5.7 contract. Same style here:
+ * find on the module-level `ROOMS` store → mutate → clone via `respond()`.
+ *
+ * Data-layer rules (the Server Action re-validates these too):
+ *  - only an `active` tenant with an assigned room can be checked out;
+ *  - the assigned room must exist and still be `occupied` (defence against a
+ *    client acting on stale data — the stores may have drifted since render).
+ */
+export async function checkOutTenant(
+  tenantId: string,
+): Promise<
+  { success: true; tenant: Tenant; room: Room } | { success: false; error: string }
+> {
+  const tenant = TENANTS.find((candidate) => candidate.id === tenantId);
+  if (!tenant) {
+    return respond({ success: false, error: "Tenant not found." });
+  }
+  if (tenant.status !== "active") {
+    return respond({ success: false, error: "Tenant is not active." });
+  }
+
+  const assignedRoomId = tenant.roomId;
+  if (!assignedRoomId) {
+    return respond({ success: false, error: "Tenant has no room assigned." });
+  }
+
+  const room = ROOMS.find((candidate) => candidate.id === assignedRoomId);
+  if (!room) {
+    return respond({ success: false, error: "Room not found." });
+  }
+  if (room.status !== "occupied") {
+    return respond({
+      success: false,
+      error: `Room "${room.number}" is not occupied.`,
+    });
+  }
+
+  // Room first (module-level ROOMS store, `updateRoomStatus` style), then the
+  // tenant — one synchronous block, so no reader sees a half-completed move.
+  room.status = "vacant";
+  room.tenantId = null;
+  room.note = null;
+
+  tenant.status = "inactive";
+  tenant.roomId = null;
+
+  return respond({
+    success: true,
+    tenant: structuredClone(tenant),
+    room: structuredClone(room),
+  });
 }
 
 /* -------------------------------------------------------------------------- */
