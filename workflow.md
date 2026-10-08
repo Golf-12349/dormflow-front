@@ -207,6 +207,11 @@ start (see the notes under the progress log).
 | Occupancy by floor | ອັດຕາການເຂົ້າພັກແຕ່ລະຊັ້ນ | dashboard 4.2 section title |
 | Revenue by period | ລາຍຮັບແຕ່ລະໄລຍະ | dashboard 4.3 section title |
 | Billing period | ໄລຍະບິນ | revenue subtitle; period values come from `formatPeriodShort` |
+| Billing period (selector label) | ໄລຍະບິນ | `t.billing.periodLabel` |
+| Billed amount | ຍອດອອກບິນ | `t.billing.cards.billed` summary card |
+| Utility rates (electricity & water) | ອັດຕາຄ່າໄຟຟ້າ ແລະ ນ້ຳ | `t.billing.cards.rates` summary card |
+| Previous month | ເດືອນກ່ອນ | `t.billing.periodNav.previous` |
+| Next month | ເດືອນຖັດໄປ | `t.billing.periodNav.next` |
 | Mock data layer | ຊັ້ນຂໍ້ມູນສາທິດ | dashboard side card; consistent with the auth demo-build footer |
 | Signed in as | ເຂົ້າສູ່ລະບົບໃນນາມ | value shown next to it comes from `t.roles` |
 | due {date} | ກຳນົດ {date} | action-item detail line |
@@ -229,7 +234,7 @@ start (see the notes under the progress log).
 
 ## Phase 7 — Billing & Utilities (`/billing`)
 
-- [ ] 7.1 Period selector (current billing period default) with previous/next navigation
+- [x] 7.1 Period selector (current billing period default) with previous/next navigation
 - [ ] 7.2 Electric + water meter entry form per room with previous/current readings and live consumption preview
 - [ ] 7.3 Validation: current reading must be ≥ previous, no duplicate period entry, per-room feedback
 - [ ] 7.4 Invoice generation from saved readings (room fee + electric + water + other fees, totals recomputed)

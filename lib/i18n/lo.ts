@@ -327,6 +327,9 @@ export const lo = {
         comparisonPeriod: string,
       ) => `${label}: ${value} (${hint}). ${changes} ທຽບກັບ ${comparisonPeriod}.`,
     },
+
+
+
   },
   /**
    * Phase 6 tenant table (`app/(app)/tenants/page.tsx`). Lao has no plural forms,
@@ -461,6 +464,26 @@ export const lo = {
       triggerLabel: (name: string) => `ການກະທຳຂອງ ${name}`,
       viewProfile: "ເບິ່ງໂປຣໄຟລ໌",
     },
+  },
+  billing: {
+    /** Label for the billing-period selector. */
+    periodLabel: "ໄລຍະບິນ",
+    /** Summary cards shown for the selected period. */
+    cards: {
+      billed: "ຍອດອອກບິນ",
+      collected: "ເກັບໄດ້",
+      outstanding: "ຄ້າງຊຳລະ",
+      rates: "ອັດຕາຄ່າໄຟຟ້າ ແລະ ນ້ຳ",
+    },
+    /** Period navigation labels (previous / next). */
+    periodNav: {
+      previous: "ເດືອນກ່ອນ",
+      next: "ເດືອນຖັດໄປ",
+    },
+    /** Note displayed below the cards for features still to be built. */
+    note: "ການຈົດມິເຕີ, ການອອກໃບແຈ້ງໜີ້, ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
+    /** `count` is the number of meter readings recorded for the selected period. */
+    readingsCount: (count: number) => `ຈົດມິເຕີແລ້ວ ${count} ລາຍການໃນໄລຍະນີ້.`,
   },
 } as const;
 

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
 import { t } from "@/lib/i18n";
 import {
   getCurrentPeriod,
   getInvoices,
   getUtilityRates,
   getUtilityReadings,
+  shiftPeriod,
 } from "@/lib/mock-data";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
 
@@ -15,12 +16,22 @@ export const metadata: Metadata = {
 };
 
 /**
- * Phase 7 replaces this with meter entry, invoice generation and payments.
- * The numbers below are already computed from the mock ledger for the current
- * period, so the wiring is proven before the UI exists.
+ * Phase 7 replaces the `PagePlaceholder` with a real period selector and the
+ * four summary cards. The period is URL-driven (`?period=YYYY-MM`) so it
+ * survives refresh and can be shared, and it is re-fetched for whichever
+ * period is selected.
  */
-export default async function BillingPage() {
-  const period = getCurrentPeriod();
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  // Default to the current billing period when `?period=` is absent.
+  const period =
+    typeof searchParams.period === "string" && searchParams.period
+      ? (searchParams.period as string)
+      : getCurrentPeriod();
+
   const [invoices, readings, rates] = await Promise.all([
     getInvoices({ period }),
     getUtilityReadings(period),
@@ -31,28 +42,48 @@ export default async function BillingPage() {
   const collected = invoices.reduce((sum, invoice) => sum + invoice.paidAmount, 0);
   const outstanding = billed - collected;
 
+  const previousPeriod = shiftPeriod(period, -1);
+  const nextPeriod = shiftPeriod(period, 1);
+
   return (
-    <PagePlaceholder
-      title="Billing & utilities"
-      description={`${formatPeriod(period)} — ${invoices.length} invoices and ${readings.length} meter readings recorded. Meter entry, invoice generation and payments arrive in Phase 7.`}
-      phase="Phase 7"
-      planned={[
-        "Period selector with previous/next navigation",
-        "Electric and water meter entry per room with live consumption preview",
-        "Validation: current reading ≥ previous, no duplicate period entry",
-        "Invoice generation from saved readings (room fee + electric + water + other)",
-        "Invoice list with status badges, paid/outstanding totals and a printable view",
-        "Record payment, including partial payments",
-        "Utility rate settings (per kWh / per m³)",
-      ]}
-    >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            {t.billing.periodLabel}
+          </p>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {formatPeriod(period)}
+          </h1>
+        </div>
+        <nav
+          aria-label={t.billing.periodNav.previous}
+          className="flex items-center gap-2"
+        >
+          <Link
+            href={`/billing?period=${previousPeriod}`}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            aria-label={`${t.billing.periodNav.previous} ${formatPeriod(previousPeriod)}`}
+          >
+            ‹
+          </Link>
+          <Link
+            href={`/billing?period=${nextPeriod}`}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            aria-label={`${t.billing.periodNav.next} ${formatPeriod(nextPeriod)}`}
+          >
+            ›
+          </Link>
+        </nav>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Billed", value: formatCurrency(billed) },
-          { label: "Collected", value: formatCurrency(collected) },
-          { label: "Outstanding", value: formatCurrency(outstanding) },
+          { label: t.billing.cards.billed, value: formatCurrency(billed) },
+          { label: t.billing.cards.collected, value: formatCurrency(collected) },
+          { label: t.billing.cards.outstanding, value: formatCurrency(outstanding) },
           {
-            label: "Rates",
+            label: t.billing.cards.rates,
             value: `${formatUnitPrice(rates.electricPerKwh)}/kWh · ${formatUnitPrice(rates.waterPerCubicMeter)}/m³`,
           },
         ].map(({ label, value }) => (
@@ -67,6 +98,11 @@ export default async function BillingPage() {
           </article>
         ))}
       </div>
-    </PagePlaceholder>
+
+      <div className="mt-4 space-y-1 text-sm leading-relaxed text-slate-500">
+        <p>{t.billing.note}</p>
+        <p>{t.billing.readingsCount(readings.length)}</p>
+      </div>
+    </>
   );
 }
