@@ -481,9 +481,41 @@ export const lo = {
       next: "ເດືອນຖັດໄປ",
     },
     /** Note displayed below the cards for features still to be built. */
-    note: "ການຈົດມິເຕີ, ການອອກໃບແຈ້ງໜີ້, ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
+    note: "ການອອກໃບແຈ້ງໜີ້, ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
     /** `count` is the number of meter readings recorded for the selected period. */
     readingsCount: (count: number) => `ຈົດມິເຕີແລ້ວ ${count} ລາຍການໃນໄລຍະນີ້.`,
+    meter: {
+      sectionTitle: "ການຈົດມິເຕີ",
+      sectionSubtitle: (period: string) =>
+        `ຈົດເລກມິເຕີໄຟຟ້າ ແລະ ນ້ຳ ຂອງຫ້ອງທີ່ມີຜູ້ເຊົ່າ ປະຈຳ ${period}.`,
+      progress: (done: number, total: number) =>
+        `ຈົດແລ້ວ ${done} ຈາກ ${total} ຫ້ອງ.`,
+      empty: "ບໍ່ມີຫ້ອງທີ່ມີຜູ້ເຊົ່າ.",
+      electric: "ໄຟຟ້າ",
+      water: "ນ້ຳ",
+      previous: "ເລກກ່ອນ",
+      current: "ເລກປັດຈຸບັນ",
+      usage: "ໃຊ້ໄປ",
+      estimatedCost: "ຄ່າໃຊ້ຈ່າຍໂດຍປະມານ",
+      recorded: "ຈົດແລ້ວ",
+      pending: "ຍັງບໍ່ໄດ້ຈົດ",
+      firstReadingHint: "ຫ້ອງນີ້ຍັງບໍ່ເຄີຍຈົດມິເຕີ — ກະລຸນາປ້ອນເລກເລີ່ມຕົ້ນ.",
+      belowPreviousWarning: "ເລກປັດຈຸບັນຕ່ຳກວ່າເລກກ່ອນ.",
+      saving: "ກຳລັງບັນທຶກ…",
+      success: (roomNumber: string) => `ບັນທຶກມິເຕີຫ້ອງ ${roomNumber} ແລ້ວ.`,
+      errors: {
+        invalidPeriod: "ໄລຍະບິນບໍ່ຖືກຕ້ອງ.",
+        futurePeriod: "ບໍ່ສາມາດຈົດມິເຕີຂອງໄລຍະໃນອະນາຄົດໄດ້.",
+        roomNotFound: "ບໍ່ພົບຫ້ອງນີ້.",
+        roomNotOccupied: "ຫ້ອງນີ້ບໍ່ມີຜູ້ເຊົ່າ ຈຶ່ງບໍ່ສາມາດຈົດມິເຕີໄດ້.",
+        invalidNumber: "ກະລຸນາປ້ອນເລກມິເຕີເປັນຕົວເລກທີ່ບໍ່ຕິດລົບ.",
+        electricBelowPrevious: "ເລກໄຟຟ້າປັດຈຸບັນຕ້ອງບໍ່ຕ່ຳກວ່າເລກກ່ອນ.",
+        waterBelowPrevious: "ເລກນ້ຳປັດຈຸບັນຕ້ອງບໍ່ຕ່ຳກວ່າເລກກ່ອນ.",
+        duplicate: "ຫ້ອງນີ້ໄດ້ຈົດມິເຕີຂອງໄລຍະນີ້ແລ້ວ.",
+        laterExists: "ຫ້ອງນີ້ມີການຈົດມິເຕີຂອງໄລຍະຫຼັງຈາກນີ້ແລ້ວ ຈຶ່ງບໍ່ສາມາດຈົດຍ້ອນຫຼັງໄດ້.",
+        unknown: "ບໍ່ສາມາດບັນທຶກໄດ້ ກະລຸນາລອງໃໝ່.",
+      },
+    },
   },
 } as const;
 

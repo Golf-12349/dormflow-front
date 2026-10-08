@@ -115,6 +115,7 @@ const SUITE_AMENITIES = [...KITCHEN_AMENITIES, "Balcony", "Living area"];
 declare global {
   var __dms_mock_rooms: Room[] | undefined;
   var __dms_mock_tenants: Tenant[] | undefined;
+  var __dms_mock_utility_readings: UtilityReading[] | undefined;
 }
 
 const SEED_ROOMS: Room[] = [
@@ -270,7 +271,7 @@ const TENANTS: Tenant[] = (globalThis.__dms_mock_tenants ??= structuredClone(SEE
  * Meter readings. September holds the full round, August is kept so the room
  * detail view can show a history row.
  */
-const UTILITY_READINGS: UtilityReading[] = [
+const SEED_UTILITY_READINGS: UtilityReading[] = [
   { id: "RDG-101-2026-09", roomId: "ROOM-101", period: "2026-09", electricPrevious: 1240, electricCurrent: 1318, waterPrevious: 96, waterCurrent: 101, electricRate: UTILITY_RATES.electricPerKwh, waterRate: UTILITY_RATES.waterPerCubicMeter, recordedAt: "2026-09-05T09:15:00" },
   { id: "RDG-102-2026-09", roomId: "ROOM-102", period: "2026-09", electricPrevious: 1580, electricCurrent: 1675, waterPrevious: 118, waterCurrent: 125, electricRate: UTILITY_RATES.electricPerKwh, waterRate: UTILITY_RATES.waterPerCubicMeter, recordedAt: "2026-09-05T09:25:00" },
   { id: "RDG-104-2026-09", roomId: "ROOM-104", period: "2026-09", electricPrevious: 2010, electricCurrent: 2119, waterPrevious: 140, waterCurrent: 148, electricRate: UTILITY_RATES.electricPerKwh, waterRate: UTILITY_RATES.waterPerCubicMeter, recordedAt: "2026-09-05T09:40:00" },
@@ -284,6 +285,8 @@ const UTILITY_READINGS: UtilityReading[] = [
   { id: "RDG-101-2026-08", roomId: "ROOM-101", period: "2026-08", electricPrevious: 1150, electricCurrent: 1240, waterPrevious: 90, waterCurrent: 96, electricRate: UTILITY_RATES.electricPerKwh, waterRate: UTILITY_RATES.waterPerCubicMeter, recordedAt: "2026-08-05T09:10:00" },
   { id: "RDG-102-2026-08", roomId: "ROOM-102", period: "2026-08", electricPrevious: 1480, electricCurrent: 1580, waterPrevious: 110, waterCurrent: 118, electricRate: UTILITY_RATES.electricPerKwh, waterRate: UTILITY_RATES.waterPerCubicMeter, recordedAt: "2026-08-05T09:20:00" },
 ];
+
+const UTILITY_READINGS: UtilityReading[] = (globalThis.__dms_mock_utility_readings ??= structuredClone(SEED_UTILITY_READINGS));
 
 /**
  * Invoice builder. Totals and status are derived from the fees so the numbers
@@ -797,6 +800,70 @@ export async function getUtilityReadingsByRoom(
   ).sort((a, b) => b.period.localeCompare(a.period));
 
   return respond(readings);
+}
+
+/** Fields the "save meter reading" Server Action forwards. */
+interface CreateUtilityReadingInput {
+  roomId: string;
+  period: BillingPeriod;
+  electricPrevious: number;
+  electricCurrent: number;
+  waterPrevious: number;
+  waterCurrent: number;
+}
+
+/**
+ * Records a meter reading in the in-memory mock dataset (Phase 7.2/7.3
+ * "save meter reading").
+ *
+ * Data-layer rules (the Server Action validates the form fields first):
+ *  - the room must exist;
+ *  - no reading may already exist for that roomId + period (the Server
+ *    Action also guards against later periods to protect the cumulative
+ *    meter chain).
+ *
+ * The new reading snapshots the current UTILITY_RATES into
+ * electricRate/waterRate and keeps the existing `RDG-<number>-<period>`
+ * id scheme.
+ */
+export async function createUtilityReading(
+  input: CreateUtilityReadingInput,
+): Promise<
+  | { success: true; reading: UtilityReading }
+  | { success: false; error: string }
+> {
+  const room = ROOMS.find((candidate) => candidate.id === input.roomId);
+  if (!room) {
+    return respond({ success: false, error: "Room not found." });
+  }
+
+  const duplicate = UTILITY_READINGS.find(
+    (candidate) =>
+      candidate.roomId === input.roomId && candidate.period === input.period,
+  );
+  if (duplicate) {
+    return respond({
+      success: false,
+      error: `Reading for room "${room.number}" in period "${input.period}" already exists.`,
+    });
+  }
+
+  const reading: UtilityReading = {
+    id: `RDG-${room.number}-${input.period}`,
+    roomId: room.id,
+    period: input.period,
+    electricPrevious: input.electricPrevious,
+    electricCurrent: input.electricCurrent,
+    waterPrevious: input.waterPrevious,
+    waterCurrent: input.waterCurrent,
+    electricRate: UTILITY_RATES.electricPerKwh,
+    waterRate: UTILITY_RATES.waterPerCubicMeter,
+    recordedAt: new Date().toISOString(),
+  };
+
+  UTILITY_READINGS.push(reading);
+
+  return respond({ success: true, reading: structuredClone(reading) });
 }
 
 /* -------------------------------------------------------------------------- */

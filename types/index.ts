@@ -133,6 +133,18 @@ export interface CheckOutTenantFormState {
   message: string | null;
 }
 
+/** State returned by the "save meter reading" mutation Server Action (Phase 7.2/7.3). */
+export interface MeterReadingFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  fieldErrors?: Partial<
+    Record<
+      "electricPrevious" | "electricCurrent" | "waterPrevious" | "waterCurrent",
+      string
+    >
+  >;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Utilities & billing                                                        */
 /* -------------------------------------------------------------------------- */

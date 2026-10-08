@@ -212,6 +212,12 @@ start (see the notes under the progress log).
 | Utility rates (electricity & water) | ອັດຕາຄ່າໄຟຟ້າ ແລະ ນ້ຳ | `t.billing.cards.rates` summary card |
 | Previous month | ເດືອນກ່ອນ | `t.billing.periodNav.previous` |
 | Next month | ເດືອນຖັດໄປ | `t.billing.periodNav.next` |
+| Meter reading | ການຈົດມິເຕີ | `t.billing.meter.sectionTitle` |
+| Previous reading | ເລກກ່ອນ | `t.billing.meter.previous` |
+| Current reading | ເລກປັດຈຸບັນ | `t.billing.meter.current` |
+| Usage | ໃຊ້ໄປ | `t.billing.meter.usage` |
+| Estimated cost | ຄ່າໃຊ້ຈ່າຍໂດຍປະມານ | `t.billing.meter.estimatedCost` |
+| Recorded | ຈົດແລ້ວ | `t.billing.meter.recorded` |
 | Mock data layer | ຊັ້ນຂໍ້ມູນສາທິດ | dashboard side card; consistent with the auth demo-build footer |
 | Signed in as | ເຂົ້າສູ່ລະບົບໃນນາມ | value shown next to it comes from `t.roles` |
 | due {date} | ກຳນົດ {date} | action-item detail line |
