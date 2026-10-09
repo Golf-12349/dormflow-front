@@ -1,49 +1,80 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 import { t } from "@/lib/i18n";
 import {
   getCurrentPeriod,
   getInvoices,
+  getRooms,
   getUtilityRates,
   getUtilityReadings,
+  getUtilityReadingsByRoom,
   shiftPeriod,
 } from "@/lib/mock-data";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
+import type { Room, UtilityReading } from "@/types";
+import { MeterEntry, type MeterRoom } from "./meter-entry";
 
 export const metadata: Metadata = {
   title: t.nav.billing,
 };
 
 /**
- * Phase 7 replaces the `PagePlaceholder` with a real period selector and the
- * four summary cards. The period is URL-driven (`?period=YYYY-MM`) so it
- * survives refresh and can be shared, and it is re-fetched for whichever
- * period is selected.
+ * Phase 7 — billing screen (Server Component).
+ *
+ * 7.1 owns the URL-driven period selector (`?period=YYYY-MM`); 7.2/7.3 add
+ * the meter-entry section below the summary cards. The data layer is still
+ * the mock layer, so per-room history is pre-loaded here in one parallel
+ * pass and handed to `<MeterEntry />` as plain serializable props.
  */
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  // Default to the current billing period when `?period=` is absent.
+  // Validated period from 7.1 — reused as-is, never re-parsed below.
   const period =
     typeof searchParams.period === "string" && searchParams.period
       ? (searchParams.period as string)
       : getCurrentPeriod();
 
-  const [invoices, readings, rates] = await Promise.all([
+  // Pre-load pattern (as in Rooms/Tenants): occupied rooms, rates and
+  // period-level data in one Promise.all; with the real API this becomes
+  // a bulk/per-room fetch.
+  const [invoices, readings, rates, occupiedRooms] = await Promise.all([
     getInvoices({ period }),
     getUtilityReadings(period),
     getUtilityRates(),
+    getRooms({ status: "occupied" }),
   ]);
 
+  const sortedRooms = [...occupiedRooms].sort((a, b) =>
+    a.number.localeCompare(b.number),
+  );
+
+  // Per-room meter history, pre-loaded in one parallel pass. With the real
+  // API this becomes a bulk/per-room fetch.
+  const histories = await Promise.all(
+    sortedRooms.map((room) => getUtilityReadingsByRoom(room.id)),
+  );
+
+  const rooms: MeterRoom[] = sortedRooms.map((room, index) =>
+    classifyRoom(room, histories[index] ?? [], period),
+  );
+
   const billed = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
-  const collected = invoices.reduce((sum, invoice) => sum + invoice.paidAmount, 0);
+  const collected = invoices.reduce(
+    (sum, invoice) => sum + invoice.paidAmount,
+    0,
+  );
   const outstanding = billed - collected;
 
   const previousPeriod = shiftPeriod(period, -1);
   const nextPeriod = shiftPeriod(period, 1);
+
+  // Plain string comparison works because periods are `YYYY-MM`.
+  const canRecord = period <= getCurrentPeriod();
+  const periodLabel = formatPeriod(period);
 
   return (
     <>
@@ -99,6 +130,14 @@ export default async function BillingPage({
         ))}
       </div>
 
+      <MeterEntry
+        rooms={rooms}
+        period={period}
+        periodLabel={periodLabel}
+        canRecord={canRecord}
+        rates={rates}
+      />
+
       <div className="mt-4 space-y-1 text-sm leading-relaxed text-slate-500">
         <p>{t.billing.note}</p>
         <p>{t.billing.readingsCount(readings.length)}</p>
@@ -106,3 +145,43 @@ export default async function BillingPage({
     </>
   );
 }
+
+/**
+ * Pure helper: exactly one of `recorded` / `blocked` / `editable`.
+ *
+ * - `recorded`: a reading exists with `period === selected period` (its own
+ *   stored rates travel with it, so the cost line never depends on the
+ *   current rate card).
+ * - `blocked`: no reading for the selected period but a LATER one exists
+ *   (back-filling would rewrite its "previous", so entry is disabled).
+ * - `editable`: neither — `previous` is the latest reading with
+ *   `period < selected period`, or `null` for a first-ever reading.
+ */
+function classifyRoom(
+  room: Room,
+  history: UtilityReading[],
+  period: string,
+): MeterRoom {
+  const current = history.find((reading) => reading.period === period);
+  if (current) return { room, kind: { kind: "recorded", reading: current } };
+
+  const hasLater = history.some((reading) => reading.period > period);
+  if (hasLater) return { room, kind: { kind: "blocked" } };
+
+  const latestEarlier = history
+    .filter((reading) => reading.period < period)
+    .sort((a, b) => b.period.localeCompare(a.period))[0];
+  return {
+    room,
+    kind: {
+      kind: "editable",
+      previous: latestEarlier
+        ? {
+            electric: latestEarlier.electricCurrent,
+            water: latestEarlier.waterCurrent,
+          }
+        : null,
+    },
+  };
+}
+
