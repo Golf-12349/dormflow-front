@@ -14,12 +14,14 @@ import { revalidatePath } from "next/cache";
 
 import { t } from "@/lib/i18n";
 import {
+  createInvoice,
   createUtilityReading,
   getCurrentPeriod,
+  getInvoices,
   getRoomById,
   getUtilityReadingsByRoom,
 } from "@/lib/mock-data";
-import type { MeterReadingFormState } from "@/types";
+import type { InvoiceGenerationFormState, MeterReadingFormState } from "@/types";
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -210,5 +212,150 @@ export async function saveMeterReadingAction(
   return {
     status: "success",
     message: t.billing.meter.success(room.number),
+  };
+}
+
+/**
+ * Lao wording for the English errors `createInvoice()` in
+ * `lib/mock-data.ts` can return (the data layer stays English by
+ * convention):
+ *
+ * - `"Room is not billable."`
+ * - `"Tenant not found."`
+ * - `` `No meter reading for room "<number>" in period "<period>".` ``
+ * - `` `Invoice for room "<number>" in period "<period>" already exists.` ``
+ */
+const INVOICE_DATA_LAYER_ERROR_TRANSLATIONS: Array<{
+  pattern: RegExp;
+  localize: () => string;
+}> = [
+  {
+    pattern: /^Room is not billable\.$/,
+    localize: () => t.billing.invoice.generate.errors.noTenant,
+  },
+  {
+    pattern: /^Tenant not found\.$/,
+    localize: () => t.billing.invoice.generate.errors.noTenant,
+  },
+  {
+    pattern: /^No meter reading for room "[^"]+" in period "[^"]+"\.$/,
+    localize: () => t.billing.invoice.generate.errors.noReading,
+  },
+  {
+    pattern: /^Invoice for room "[^"]+" in period "[^"]+" already exists\.$/,
+    localize: () => t.billing.invoice.generate.errors.duplicate,
+  },
+];
+
+/**
+ * Unknown wording falls back to `t.billing.invoice.generate.errors.unknown`
+ * rather than throwing, so the form always shows a Lao message.
+ */
+function localizeInvoiceDataLayerError(message: string): string {
+  for (const { pattern, localize } of INVOICE_DATA_LAYER_ERROR_TRANSLATIONS) {
+    if (pattern.test(message)) return localize();
+  }
+
+  return t.billing.invoice.generate.errors.unknown;
+}
+
+/**
+ * 7.4 — "generate invoice". Every field is re-checked here on the
+ * server in exactly this order, and the first failure is returned as a
+ * state object (never thrown):
+ *
+ * a. period matches `YYYY-MM`;
+ * b. period is not later than `getCurrentPeriod()`;
+ * c. the room exists (`roomNotFound`), is `occupied` and has a tenant
+ *    (`noTenant`);
+ * d. otherFee is empty (= 0) or a finite number >= 0
+ *    (`invalidOtherFee` + `fieldErrors.otherFee`);
+ * e. a reading exists for the period (`noReading`);
+ * f. no invoice exists for the same room + period (`duplicate`);
+ * g. the write goes through `createInvoice()`, whose English errors are
+ *    localised on the way out (`unknown` fallback).
+ */
+export async function generateInvoiceAction(
+  _prevState: InvoiceGenerationFormState,
+  formData: FormData,
+): Promise<InvoiceGenerationFormState> {
+  const roomId = readField(formData, "roomId");
+  const period = readField(formData, "period");
+
+  if (!PERIOD_PATTERN.test(period)) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.invalidPeriod,
+    };
+  }
+
+  if (period > getCurrentPeriod()) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.futurePeriod,
+    };
+  }
+
+  const room = await getRoomById(roomId);
+  if (!room) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.roomNotFound,
+    };
+  }
+  if (room.status !== "occupied" || !room.tenantId) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.noTenant,
+    };
+  }
+
+  const rawOtherFee = readField(formData, "otherFee");
+  const otherFee = rawOtherFee === "" ? 0 : Number(rawOtherFee);
+  if (!Number.isFinite(otherFee) || otherFee < 0) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.invalidOtherFee,
+      fieldErrors: {
+        otherFee: t.billing.invoice.generate.errors.invalidOtherFee,
+      },
+    };
+  }
+
+  const history = await getUtilityReadingsByRoom(roomId);
+  if (!history.some((reading) => reading.period === period)) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.noReading,
+    };
+  }
+
+  const existing = await getInvoices({ period });
+  if (existing.some((invoice) => invoice.roomId === roomId)) {
+    return {
+      status: "error",
+      message: t.billing.invoice.generate.errors.duplicate,
+    };
+  }
+
+  const result = await createInvoice({ roomId, period, otherFee });
+
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizeInvoiceDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/billing");
+  revalidatePath("/dashboard");
+  revalidatePath("/tenants");
+
+  return {
+    status: "success",
+    message: t.billing.invoice.generate.success(
+      result.invoice.invoiceNumber,
+      room.number,
+    ),
   };
 }

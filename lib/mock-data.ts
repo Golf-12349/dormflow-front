@@ -116,6 +116,7 @@ declare global {
   var __dms_mock_rooms: Room[] | undefined;
   var __dms_mock_tenants: Tenant[] | undefined;
   var __dms_mock_utility_readings: UtilityReading[] | undefined;
+  var __dms_mock_invoices: Invoice[] | undefined;
 }
 
 const SEED_ROOMS: Room[] = [
@@ -310,7 +311,7 @@ function buildInvoice(input: {
   dueDate: string;
 }): Invoice {
   const otherFee = input.otherFee ?? 0;
-  const total = input.roomFee + input.electricFee + input.waterFee + otherFee;
+  const total = Math.round((input.roomFee + input.electricFee + input.waterFee + otherFee) * 100) / 100;
   const paidAmount = input.paidAmount ?? 0;
 
   const status: InvoiceStatus =
@@ -342,7 +343,7 @@ function buildInvoice(input: {
   };
 }
 
-const INVOICES: Invoice[] = [
+const SEED_INVOICES: Invoice[] = [
   buildInvoice({ sequence: 1, tenantId: "TEN-001", roomId: "ROOM-101", period: "2026-09", roomFee: 320, electricFee: 26, waterFee: 19, paidAmount: 365, issuedDate: "2026-09-01", dueDate: "2026-09-30" }),
   buildInvoice({ sequence: 2, tenantId: "TEN-002", roomId: "ROOM-102", period: "2026-09", roomFee: 420, electricFee: 31, waterFee: 22, paidAmount: 473, issuedDate: "2026-09-01", dueDate: "2026-09-30" }),
   buildInvoice({ sequence: 3, tenantId: "TEN-003", roomId: "ROOM-104", period: "2026-09", roomFee: 480, electricFee: 38, waterFee: 26, paidAmount: 334, issuedDate: "2026-09-01", dueDate: "2026-09-30" }),
@@ -365,6 +366,110 @@ const INVOICES: Invoice[] = [
   buildInvoice({ sequence: 20, tenantId: "TEN-006", roomId: "ROOM-203", period: "2026-07", roomFee: 620, electricFee: 45, waterFee: 29, paidAmount: 694, issuedDate: "2026-07-01", dueDate: "2026-07-31" }),
   buildInvoice({ sequence: 21, tenantId: "TEN-011", roomId: "ROOM-306", period: "2026-07", roomFee: 640, electricFee: 48, waterFee: 30, paidAmount: 718, issuedDate: "2026-07-01", dueDate: "2026-07-31" }),
 ];
+
+const INVOICES: Invoice[] = (globalThis.__dms_mock_invoices ??= structuredClone(SEED_INVOICES));
+
+/** Round to 2 decimals (money). */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Fields the "generate invoice" Server Action forwards. */
+interface CreateInvoiceInput {
+  roomId: string;
+  period: BillingPeriod;
+  otherFee: number;
+}
+
+/**
+ * Generates an invoice from a saved meter reading in the in-memory mock
+ * dataset (Phase 7.4 "generate invoice").
+ *
+ * Data-layer rules:
+ *  - the room must exist, be "occupied" and have a tenantId; the tenant
+ *    must exist;
+ *  - a reading for roomId + period must exist in UTILITY_READINGS;
+ *  - no invoice may already exist for the same roomId + period.
+ *
+ * Fees recompute from the reading's STORED rates (not the current rate
+ * card); the invoice number continues the trailing-3-digit sequence,
+ * issued on the first of the period and due on its last day.
+ */
+export async function createInvoice(
+  input: CreateInvoiceInput,
+): Promise<
+  | { success: true; invoice: Invoice }
+  | { success: false; error: string }
+> {
+  const room = ROOMS.find((candidate) => candidate.id === input.roomId);
+  if (!room || room.status !== "occupied" || !room.tenantId) {
+    return respond({ success: false, error: "Room is not billable." });
+  }
+
+  const tenant = TENANTS.find((candidate) => candidate.id === room.tenantId);
+  if (!tenant) {
+    return respond({ success: false, error: "Tenant not found." });
+  }
+
+  const reading = UTILITY_READINGS.find(
+    (candidate) =>
+      candidate.roomId === input.roomId && candidate.period === input.period,
+  );
+  if (!reading) {
+    return respond({
+      success: false,
+      error: `No meter reading for room "${room.number}" in period "${input.period}".`,
+    });
+  }
+
+  const duplicate = INVOICES.find(
+    (candidate) =>
+      candidate.roomId === input.roomId && candidate.period === input.period,
+  );
+  if (duplicate) {
+    return respond({
+      success: false,
+      error: `Invoice for room "${room.number}" in period "${input.period}" already exists.`,
+    });
+  }
+
+  const roomFee = room.monthlyRate;
+  const electricFee = round2(
+    (reading.electricCurrent - reading.electricPrevious) * reading.electricRate,
+  );
+  const waterFee = round2(
+    (reading.waterCurrent - reading.waterPrevious) * reading.waterRate,
+  );
+  const otherFee = round2(input.otherFee);
+
+  const sequence =
+    INVOICES.reduce(
+      (max, candidate) =>
+        Math.max(max, Number(candidate.invoiceNumber.slice(-3))),
+      0,
+    ) + 1;
+
+  const [year, month] = input.period.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const monthPadded = String(month).padStart(2, "0");
+
+  const invoice = buildInvoice({
+    sequence,
+    tenantId: tenant.id,
+    roomId: room.id,
+    period: input.period,
+    roomFee,
+    electricFee,
+    waterFee,
+    otherFee,
+    issuedDate: `${input.period}-01`,
+    dueDate: `${year}-${monthPadded}-${String(lastDay).padStart(2, "0")}`,
+  });
+
+  INVOICES.push(invoice);
+
+  return respond({ success: true, invoice: structuredClone(invoice) });
+}
 
 /** Activity feed, newest first. Timestamps are close to `CURRENT_PERIOD`. */
 const ACTIVITIES: Activity[] = [

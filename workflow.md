@@ -225,6 +225,12 @@ start (see the notes under the progress log).
 | Nothing needs attention right now. | ຕອນນີ້ບໍ່ມີລາຍການທີ່ຕ້ອງດຳເນີນການ. | attention-list empty state |
 | {n} rooms (classifier) | {n} ຫ້ອງ | counts read as "3 ຫ້ອງຈອງແລ້ວ"; Lao has no plural form |
 | {n} tenants (classifier) | {n} ຄົນ | "ຜູ້ເຊົ່າກຳລັງເຊົ່າ 12 ຄົນ" |
+| Room fee | ຄ່າເຊົ່າຫ້ອງ | `t.billing.invoice.generate.roomFee` |
+| Electric fee | ຄ່າໄຟຟ້າ | `t.billing.invoice.generate.electricFee` |
+| Water fee | ຄ່ານ້ຳ | `t.billing.invoice.generate.waterFee` |
+| Other fees | ຄ່າໃຊ້ຈ່າຍອື່ນໆ | `t.billing.invoice.generate.otherFee` |
+| Total (invoice) | ລວມທັງໝົດ | `t.billing.invoice.generate.total` |
+| Generate invoice | ອອກໃບແຈ້ງໜີ້ | `t.billing.invoice.generate.submit` |
 | Not yet recorded (empty states) | ຍັງບໍ່ມີ… | the three dashboard empty-state sentences
 
 *Note: The product name "DormHub" and digits stay Latin.*

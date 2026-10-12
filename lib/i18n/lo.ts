@@ -516,6 +516,37 @@ export const lo = {
         unknown: "ບໍ່ສາມາດບັນທຶກໄດ້ ກະລຸນາລອງໃໝ່.",
       },
     },
+    invoice: {
+      generate: {
+        sectionTitle: "ການອອກໃບແຈ້ງໜີ້",
+        sectionSubtitle: (period: string) =>
+          `ອອກໃບແຈ້ງໜີ້ຈາກເລກມິເຕີທີ່ຈົດໄວ້ ປະຈຳ ${period}.`,
+        progress: (done: number, total: number) =>
+          `ອອກໃບແຈ້ງໜີ້ແລ້ວ ${done} ຈາກ ${total} ຫ້ອງ.`,
+        empty: "ຍັງບໍ່ມີຫ້ອງທີ່ຈົດມິເຕີແລ້ວໃນໄລຍະນີ້.",
+        ready: "ພ້ອມອອກໃບແຈ້ງໜີ້",
+        issued: "ອອກໃບແຈ້ງໜີ້ແລ້ວ",
+        roomFee: "ຄ່າເຊົ່າຫ້ອງ",
+        electricFee: "ຄ່າໄຟຟ້າ",
+        waterFee: "ຄ່ານ້ຳ",
+        otherFee: "ຄ່າໃຊ້ຈ່າຍອື່ນໆ",
+        total: "ລວມທັງໝົດ",
+        submit: "ອອກໃບແຈ້ງໜີ້",
+        submitting: "ກຳລັງອອກໃບແຈ້ງໜີ້…",
+        success: (invoiceNumber: string, roomNumber: string) =>
+          `ອອກໃບແຈ້ງໜີ້ ${invoiceNumber} ຂອງຫ້ອງ ${roomNumber} ແລ້ວ.`,
+        errors: {
+          invalidPeriod: "ໄລຍະບິນບໍ່ຖືກຕ້ອງ.",
+          futurePeriod: "ບໍ່ສາມາດອອກໃບແຈ້ງໜີ້ຂອງໄລຍະໃນອະນາຄົດໄດ້.",
+          roomNotFound: "ບໍ່ພົບຫ້ອງນີ້.",
+          noTenant: "ຫ້ອງນີ້ບໍ່ມີຜູ້ເຊົ່າ ຈຶ່ງບໍ່ສາມາດອອກໃບແຈ້ງໜີ້ໄດ້.",
+          noReading: "ຫ້ອງນີ້ຍັງບໍ່ໄດ້ຈົດມິເຕີໃນໄລຍະນີ້ ຈຶ່ງບໍ່ສາມາດອອກໃບແຈ້ງໜີ້ໄດ້.",
+          invalidOtherFee: "ກະລຸນາປ້ອນຄ່າໃຊ້ຈ່າຍອື່ນໆເປັນຕົວເລກທີ່ບໍ່ຕິດລົບ.",
+          duplicate: "ຫ້ອງນີ້ໄດ້ອອກໃບແຈ້ງໜີ້ຂອງໄລຍະນີ້ແລ້ວ.",
+          unknown: "ບໍ່ສາມາດອອກໃບແຈ້ງໜີ້ໄດ້ ກະລຸນາລອງໃໝ່.",
+        },
+      },
+    },
   },
 } as const;
 

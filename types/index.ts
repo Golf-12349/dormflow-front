@@ -199,6 +199,13 @@ export interface InvoiceDraftInput {
   note?: string;
 }
 
+/** State returned by the "generate invoice" mutation Server Action (Phase 7.4). */
+export interface InvoiceGenerationFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  fieldErrors?: Partial<Record<"otherFee", string>>;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Dashboard                                                                  */
 /* -------------------------------------------------------------------------- */
