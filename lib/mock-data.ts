@@ -93,10 +93,10 @@ export const STAFF_ACCOUNTS: MockCredential[] = [
 ];
 
 /** Utility pricing used to turn meter deltas into money. */
-export const UTILITY_RATES = {
+export const UTILITY_RATES = (globalThis.__dms_mock_utility_rates ??= {
   electricPerKwh: 0.18,
   waterPerCubicMeter: 3.2,
-};
+});
 
 const BASIC_AMENITIES = [
   "Air conditioning",
@@ -117,6 +117,9 @@ declare global {
   var __dms_mock_tenants: Tenant[] | undefined;
   var __dms_mock_utility_readings: UtilityReading[] | undefined;
   var __dms_mock_invoices: Invoice[] | undefined;
+  var __dms_mock_utility_rates:
+    | { electricPerKwh: number; waterPerCubicMeter: number }
+    | undefined;
 }
 
 const SEED_ROOMS: Room[] = [
@@ -467,6 +470,55 @@ export async function createInvoice(
   });
 
   INVOICES.push(invoice);
+  tenant.balance = round2(
+    tenant.balance + invoice.total - invoice.paidAmount,
+  );
+
+  return respond({ success: true, invoice: structuredClone(invoice) });
+}
+
+/** Records a payment against an invoice and synchronizes the tenant balance. */
+export async function recordInvoicePayment(
+  invoiceId: string,
+  amount: number,
+): Promise<
+  | { success: true; invoice: Invoice }
+  | { success: false; error: string }
+> {
+  const invoice = INVOICES.find((candidate) => candidate.id === invoiceId);
+  if (!invoice) {
+    return respond({ success: false, error: "Invoice not found." });
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return respond({
+      success: false,
+      error: "Payment amount must be a positive number.",
+    });
+  }
+
+  const outstanding = round2(invoice.total - invoice.paidAmount);
+  if (amount > outstanding) {
+    return respond({
+      success: false,
+      error: "Payment amount exceeds the outstanding balance.",
+    });
+  }
+
+  const tenant = TENANTS.find((candidate) => candidate.id === invoice.tenantId);
+  if (!tenant) {
+    return respond({ success: false, error: "Tenant not found." });
+  }
+
+  invoice.paidAmount = round2(invoice.paidAmount + amount);
+  invoice.status =
+    invoice.paidAmount >= invoice.total ? "paid" : "partial";
+  tenant.balance = round2(
+    INVOICES.filter((candidate) => candidate.tenantId === tenant.id).reduce(
+      (sum, candidate) => sum + candidate.total - candidate.paidAmount,
+      0,
+    ),
+  );
 
   return respond({ success: true, invoice: structuredClone(invoice) });
 }
@@ -872,11 +924,33 @@ export async function getInvoicesByTenant(tenantId: string): Promise<Invoice[]> 
 /* Utilities                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export async function getUtilityRates(): Promise<{
+export interface UtilityRates {
   electricPerKwh: number;
   waterPerCubicMeter: number;
-}> {
+}
+
+export async function getUtilityRates(): Promise<UtilityRates> {
   return respond({ ...UTILITY_RATES });
+}
+
+export async function updateUtilityRates(
+  rates: UtilityRates,
+): Promise<{ success: true } | { success: false; error: string }> {
+  if (
+    !Number.isFinite(rates.electricPerKwh) ||
+    rates.electricPerKwh < 0 ||
+    !Number.isFinite(rates.waterPerCubicMeter) ||
+    rates.waterPerCubicMeter < 0
+  ) {
+    return respond({
+      success: false,
+      error: "Utility rates must be finite, non-negative numbers.",
+    });
+  }
+
+  UTILITY_RATES.electricPerKwh = rates.electricPerKwh;
+  UTILITY_RATES.waterPerCubicMeter = rates.waterPerCubicMeter;
+  return respond({ success: true });
 }
 
 export async function getUtilityReadings(

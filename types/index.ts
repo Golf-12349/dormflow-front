@@ -206,6 +206,22 @@ export interface InvoiceGenerationFormState {
   fieldErrors?: Partial<Record<"otherFee", string>>;
 }
 
+/** State returned by the "record invoice payment" mutation Server Action. */
+export interface InvoicePaymentFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  fieldErrors?: Partial<Record<"paymentAmount", string>>;
+}
+
+/** State returned by the "update utility rates" Server Action. */
+export interface UtilityRatesFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  fieldErrors?: Partial<
+    Record<"electricPerKwh" | "waterPerCubicMeter", string>
+  >;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Dashboard                                                                  */
 /* -------------------------------------------------------------------------- */

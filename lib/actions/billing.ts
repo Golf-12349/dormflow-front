@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Billing Server Actions (Phase 7.2/7.3: save meter reading).
+ * Billing Server Actions (Phase 7.2–7.7).
  *
  * Follows `lib/actions/tenants.ts` exactly: every export of a `'use server'`
  * module is an async function, expected failures return a
@@ -17,11 +17,20 @@ import {
   createInvoice,
   createUtilityReading,
   getCurrentPeriod,
+  getInvoiceById,
   getInvoices,
   getRoomById,
   getUtilityReadingsByRoom,
+  recordInvoicePayment,
+  updateUtilityRates,
 } from "@/lib/mock-data";
-import type { InvoiceGenerationFormState, MeterReadingFormState } from "@/types";
+import { verifySession } from "@/lib/session";
+import type {
+  InvoiceGenerationFormState,
+  InvoicePaymentFormState,
+  MeterReadingFormState,
+  UtilityRatesFormState,
+} from "@/types";
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -358,4 +367,155 @@ export async function generateInvoiceAction(
       room.number,
     ),
   };
+}
+
+const PAYMENT_DATA_LAYER_ERROR_TRANSLATIONS: Array<{
+  pattern: RegExp;
+  localize: () => string;
+}> = [
+  {
+    pattern: /^Invoice not found\.$/,
+    localize: () => t.billing.invoice.payment.errors.invoiceNotFound,
+  },
+  {
+    pattern: /^Tenant not found\.$/,
+    localize: () => t.billing.invoice.payment.errors.tenantNotFound,
+  },
+  {
+    pattern: /^Payment amount must be a positive number\.$/,
+    localize: () => t.billing.invoice.payment.errors.invalidAmount,
+  },
+  {
+    pattern: /^Payment amount exceeds the outstanding balance\.$/,
+    localize: () => t.billing.invoice.payment.errors.exceedsBalance,
+  },
+];
+
+function localizePaymentDataLayerError(message: string): string {
+  for (const { pattern, localize } of PAYMENT_DATA_LAYER_ERROR_TRANSLATIONS) {
+    if (pattern.test(message)) return localize();
+  }
+
+  return t.billing.invoice.payment.errors.unknown;
+}
+
+/** 7.6 — record a positive payment no greater than the current balance. */
+export async function recordInvoicePaymentAction(
+  _prevState: InvoicePaymentFormState,
+  formData: FormData,
+): Promise<InvoicePaymentFormState> {
+  await verifySession();
+
+  const invoiceId = readField(formData, "invoiceId");
+  const rawAmount = readField(formData, "paymentAmount");
+  const amount = rawAmount ? Number(rawAmount) : Number.NaN;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return {
+      status: "error",
+      message: t.billing.invoice.payment.errors.invalidAmount,
+      fieldErrors: {
+        paymentAmount: t.billing.invoice.payment.errors.invalidAmount,
+      },
+    };
+  }
+
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) {
+    return {
+      status: "error",
+      message: t.billing.invoice.payment.errors.invoiceNotFound,
+    };
+  }
+
+  if (amount > invoice.total - invoice.paidAmount) {
+    return {
+      status: "error",
+      message: t.billing.invoice.payment.errors.exceedsBalance,
+      fieldErrors: {
+        paymentAmount: t.billing.invoice.payment.errors.exceedsBalance,
+      },
+    };
+  }
+
+  const result = await recordInvoicePayment(invoiceId, amount);
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizePaymentDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/billing");
+  revalidatePath("/dashboard");
+  revalidatePath("/tenants");
+
+  return {
+    status: "success",
+    message: t.billing.invoice.payment.success(result.invoice.invoiceNumber),
+  };
+}
+
+function parseRate(value: string): number | null {
+  if (!value) return null;
+  const rate = Number(value);
+  return Number.isFinite(rate) && rate >= 0 ? rate : null;
+}
+
+const UTILITY_RATE_DATA_LAYER_ERROR_TRANSLATIONS = [
+  {
+    pattern: /^Utility rates must be finite, non-negative numbers\.$/,
+    localize: () => t.billing.rates.errors.invalidRate,
+  },
+];
+
+function localizeUtilityRateDataLayerError(message: string): string {
+  for (const { pattern, localize } of UTILITY_RATE_DATA_LAYER_ERROR_TRANSLATIONS) {
+    if (pattern.test(message)) return localize();
+  }
+
+  return t.billing.rates.errors.unknown;
+}
+
+/** 7.7 — validate and update the mock utility rates. */
+export async function updateUtilityRatesAction(
+  _prevState: UtilityRatesFormState,
+  formData: FormData,
+): Promise<UtilityRatesFormState> {
+  await verifySession();
+
+  const electricPerKwh = parseRate(readField(formData, "electricPerKwh"));
+  const waterPerCubicMeter = parseRate(
+    readField(formData, "waterPerCubicMeter"),
+  );
+  const fieldErrors: NonNullable<UtilityRatesFormState["fieldErrors"]> = {};
+
+  if (electricPerKwh === null) {
+    fieldErrors.electricPerKwh = t.billing.rates.errors.invalidRate;
+  }
+  if (waterPerCubicMeter === null) {
+    fieldErrors.waterPerCubicMeter = t.billing.rates.errors.invalidRate;
+  }
+  if (electricPerKwh === null || waterPerCubicMeter === null) {
+    return {
+      status: "error",
+      message: t.billing.rates.errors.invalidRate,
+      fieldErrors,
+    };
+  }
+
+  const result = await updateUtilityRates({
+    electricPerKwh,
+    waterPerCubicMeter,
+  });
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizeUtilityRateDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/billing");
+  revalidatePath("/settings");
+
+  return { status: "success", message: t.billing.rates.success };
 }

@@ -25,7 +25,6 @@ export default async function SettingsPage() {
       description="Staff account details, utility rates and console preferences."
       phase="Phase 7 / cross-cutting backlog"
       planned={[
-        "Editable utility rates that feed the Phase 7 invoice generator",
         "Staff account management (roles: admin, manager, staff)",
         "Notification preferences for overdue invoices and leases",
         "Dark theme pass built on the existing CSS variables",

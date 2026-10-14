@@ -6,15 +6,21 @@ import {
   getCurrentPeriod,
   getInvoices,
   getRooms,
+  getTenants,
   getUtilityRates,
   getUtilityReadings,
   getUtilityReadingsByRoom,
   shiftPeriod,
 } from "@/lib/mock-data";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
-import type { Invoice, Room, UtilityReading } from "@/types";
+import type { Invoice, Room, UtilityReading 
+
+  
+} from "@/types";
 import { InvoiceGeneration, type InvoiceRoom } from "./invoice-generation";
+import { InvoiceList } from "./invoice-list";
 import { MeterEntry, type MeterRoom } from "./meter-entry";
+import { UtilityRateSettings } from "./utility-rate-settings";
 
 export const metadata: Metadata = {
   title: t.nav.billing,
@@ -23,10 +29,8 @@ export const metadata: Metadata = {
 /**
  * Phase 7 — billing screen (Server Component).
  *
- * 7.1 owns the URL-driven period selector (`?period=YYYY-MM`); 7.2/7.3 add
- * the meter-entry section below the summary cards. The data layer is still
- * the mock layer, so per-room history is pre-loaded here in one parallel
- * pass and handed to `<MeterEntry />` as plain serializable props.
+ * Loads period summaries, per-room readings, invoices, and the current
+ * utility rates from the mock service; client forms receive plain props.
  */
 export default async function BillingPage({
   searchParams,
@@ -36,20 +40,23 @@ export default async function BillingPage({
     // Validated period from 7.1 — reused as-is, never re-parsed below.
   const resolvedParams = await searchParams;
   const period =
-    typeof resolvedParams.period === "string" && resolvedParams.period
-      ? (resolvedParams.period as string)
+    typeof resolvedParams.period === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(resolvedParams.period)
+      ? resolvedParams.period
       : getCurrentPeriod();
 
   // Pre-load pattern (as in Rooms/Tenants): occupied rooms, rates and
   // period-level data in one Promise.all; with the real API this becomes
   // a bulk/per-room fetch.
-  const [invoices, readings, rates, occupiedRooms] = await Promise.all([
+  const [invoices, readings, rates, allRooms, tenants] = await Promise.all([
     getInvoices({ period }),
     getUtilityReadings(period),
     getUtilityRates(),
-    getRooms({ status: "occupied" }),
+    getRooms(),
+    getTenants(),
   ]);
 
+  const occupiedRooms = allRooms.filter((room) => room.status === "occupied");
   const sortedRooms = [...occupiedRooms].sort((a, b) =>
     a.number.localeCompare(b.number),
   );
@@ -67,6 +74,15 @@ export default async function BillingPage({
   const invoiceRooms: InvoiceRoom[] = sortedRooms.flatMap((room, index) =>
     classifyInvoiceRoom(room, histories[index] ?? [], invoices, period),
   );
+  const invoiceEntries = invoices.map((invoice) => ({
+    invoice,
+    roomNumber:
+      allRooms.find((room) => room.id === invoice.roomId)?.number ??
+      invoice.roomId,
+    tenantName:
+      tenants.find((tenant) => tenant.id === invoice.tenantId)?.fullName ??
+      invoice.tenantId,
+  }));
 
   const billed = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
   const collected = invoices.reduce(
@@ -136,6 +152,8 @@ export default async function BillingPage({
         ))}
       </div>
 
+      <UtilityRateSettings rates={rates} />
+
       <MeterEntry
         rooms={rooms}
         period={period}
@@ -151,8 +169,9 @@ export default async function BillingPage({
         canRecord={canRecord}
       />
 
+      <InvoiceList entries={invoiceEntries} />
+
       <div className="mt-4 space-y-1 text-sm leading-relaxed text-slate-500">
-        <p>{t.billing.note}</p>
         <p>{t.billing.readingsCount(readings.length)}</p>
       </div>
     </>

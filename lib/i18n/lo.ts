@@ -480,8 +480,6 @@ export const lo = {
       previous: "ເດືອນກ່ອນ",
       next: "ເດືອນຖັດໄປ",
     },
-    /** Note displayed below the cards for features still to be built. */
-    note: "ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
     /** `count` is the number of meter readings recorded for the selected period. */
     readingsCount: (count: number) => `ຈົດມິເຕີແລ້ວ ${count} ລາຍການໃນໄລຍະນີ້.`,
     meter: {
@@ -545,6 +543,54 @@ export const lo = {
           duplicate: "ຫ້ອງນີ້ໄດ້ອອກໃບແຈ້ງໜີ້ຂອງໄລຍະນີ້ແລ້ວ.",
           unknown: "ບໍ່ສາມາດອອກໃບແຈ້ງໜີ້ໄດ້ ກະລຸນາລອງໃໝ່.",
         },
+      },
+      list: {
+        sectionTitle: "ລາຍການໃບແຈ້ງໜີ້",
+        empty: "ບໍ່ມີໃບແຈ້ງໜີ້ໃນໄລຍະນີ້.",
+        invoiceNumber: "ເລກໃບແຈ້ງໜີ້",
+        room: "ຫ້ອງ",
+        tenant: "ຜູ້ເຊົ່າ",
+        dueDate: "ກຳນົດຊຳລະ",
+        total: "ຍອດທັງໝົດ",
+        paid: "ຊຳລະແລ້ວ",
+        outstanding: "ຍອດຄ້າງ",
+        status: "ສະຖານະ",
+        actions: "ການກະທຳ",
+        print: "ເບິ່ງ / ພິມ",
+        printTitle: "ໃບແຈ້ງໜີ້",
+        issuedDate: "ວັນທີອອກ",
+        period: "ໄລຍະບິນ",
+        description: "ລາຍການ",
+        printInvoice: "ພິມໃບແຈ້ງໜີ້",
+        close: "ປິດ",
+      },
+      payment: {
+        amount: "ຈຳນວນເງິນທີ່ຊຳລະ",
+        record: "ບັນທຶກການຊຳລະ",
+        saving: "ກຳລັງບັນທຶກ…",
+        success: (invoiceNumber: string) =>
+          `ບັນທຶກການຊຳລະໃບແຈ້ງໜີ້ ${invoiceNumber} ແລ້ວ.`,
+        errors: {
+          invoiceNotFound: "ບໍ່ພົບໃບແຈ້ງໜີ້.",
+          tenantNotFound: "ບໍ່ພົບຜູ້ເຊົ່າ.",
+          invalidAmount: "ກະລຸນາປ້ອນຈຳນວນເງິນທີ່ຫຼາຍກວ່າ 0.",
+          exceedsBalance: "ຈຳນວນເງິນເກີນຍອດຄ້າງຊຳລະ.",
+          unknown: "ບໍ່ສາມາດບັນທຶກການຊຳລະໄດ້ ກະລຸນາລອງໃໝ່.",
+        },
+      },
+    },
+    rates: {
+      sectionTitle: "ຕັ້ງຄ່າອັດຕາຄ່ານ້ຳ ແລະ ໄຟຟ້າ",
+      sectionSubtitle:
+        "ອັດຕາໃໝ່ຈະໃຊ້ກັບການຈົດມິເຕີຄັ້ງຕໍ່ໄປ; ລາຍການເກົ່າຈະຄົງອັດຕາເດີມ.",
+      electricPerKwh: "ຄ່າໄຟຟ້າຕໍ່ kWh",
+      waterPerCubicMeter: "ຄ່ານ້ຳຕໍ່ m³",
+      save: "ບັນທຶກອັດຕາ",
+      saving: "ກຳລັງບັນທຶກ…",
+      success: "ບັນທຶກອັດຕາຄ່ານ້ຳ ແລະ ໄຟຟ້າແລ້ວ.",
+      errors: {
+        invalidRate: "ກະລຸນາປ້ອນອັດຕາເປັນຕົວເລກທີ່ບໍ່ຕິດລົບ.",
+        unknown: "ບໍ່ສາມາດບັນທຶກອັດຕາໄດ້ ກະລຸນາລອງໃໝ່.",
       },
     },
   },

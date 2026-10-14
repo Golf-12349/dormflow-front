@@ -42,3 +42,26 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--color-slate-300, #cbd5e1) transparent;
 }
+
+@media print {
+  body:has(#billing-print-view) * {
+    visibility: hidden !important;
+  }
+
+  body:has(#billing-print-view) #billing-print-view,
+  body:has(#billing-print-view) #billing-print-view * {
+    visibility: visible !important;
+  }
+
+  body:has(#billing-print-view) #billing-print-view {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  body:has(#billing-print-view) #billing-print-view .print-hidden {
+    display: none !important;
+  }
+}
