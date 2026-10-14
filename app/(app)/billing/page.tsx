@@ -12,7 +12,8 @@ import {
   shiftPeriod,
 } from "@/lib/mock-data";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
-import type { Room, UtilityReading } from "@/types";
+import type { Invoice, Room, UtilityReading } from "@/types";
+import { InvoiceGeneration, type InvoiceRoom } from "./invoice-generation";
 import { MeterEntry, type MeterRoom } from "./meter-entry";
 
 export const metadata: Metadata = {
@@ -30,12 +31,13 @@ export const metadata: Metadata = {
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Validated period from 7.1 — reused as-is, never re-parsed below.
+    // Validated period from 7.1 — reused as-is, never re-parsed below.
+  const resolvedParams = await searchParams;
   const period =
-    typeof searchParams.period === "string" && searchParams.period
-      ? (searchParams.period as string)
+    typeof resolvedParams.period === "string" && resolvedParams.period
+      ? (resolvedParams.period as string)
       : getCurrentPeriod();
 
   // Pre-load pattern (as in Rooms/Tenants): occupied rooms, rates and
@@ -60,6 +62,10 @@ export default async function BillingPage({
 
   const rooms: MeterRoom[] = sortedRooms.map((room, index) =>
     classifyRoom(room, histories[index] ?? [], period),
+  );
+
+  const invoiceRooms: InvoiceRoom[] = sortedRooms.flatMap((room, index) =>
+    classifyInvoiceRoom(room, histories[index] ?? [], invoices, period),
   );
 
   const billed = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
@@ -138,6 +144,13 @@ export default async function BillingPage({
         rates={rates}
       />
 
+      <InvoiceGeneration
+        rooms={invoiceRooms}
+        period={period}
+        periodLabel={periodLabel}
+        canRecord={canRecord}
+      />
+
       <div className="mt-4 space-y-1 text-sm leading-relaxed text-slate-500">
         <p>{t.billing.note}</p>
         <p>{t.billing.readingsCount(readings.length)}</p>
@@ -185,3 +198,62 @@ function classifyRoom(
   };
 }
 
+
+/**
+ * Pure helper: exactly one of `issued` / `ready`, or nothing when the room
+ * has no reading for the selected period (unlisted rooms cannot be billed).
+ *
+ * - `issued`: an invoice exists for roomId + period (number, total, status
+ *   travel with it).
+ * - `ready`: no invoice yet — fees preview with the SAME rounding as
+ *   `createInvoice` (`Math.round(x * 100) / 100`) over the reading's STORED
+ *   rates, so the preview matches what the server creates.
+ */
+function classifyInvoiceRoom(
+  room: Room,
+  history: UtilityReading[],
+  periodInvoices: Invoice[],
+  period: string,
+): InvoiceRoom[] {
+  const reading = history.find((candidate) => candidate.period === period);
+  if (!reading) return [];
+
+  const invoice = periodInvoices.find(
+    (candidate) => candidate.roomId === room.id,
+  );
+  if (invoice) {
+    return [
+      {
+        room,
+        kind: {
+          kind: "issued",
+          invoiceNumber: invoice.invoiceNumber,
+          total: invoice.total,
+          status: invoice.status,
+        },
+      },
+    ];
+  }
+
+  return [
+    {
+      room,
+      kind: {
+        kind: "ready",
+        roomFee: room.monthlyRate,
+        electricFee:
+          Math.round(
+            (reading.electricCurrent - reading.electricPrevious) *
+              reading.electricRate *
+              100,
+          ) / 100,
+        waterFee:
+          Math.round(
+            (reading.waterCurrent - reading.waterPrevious) *
+              reading.waterRate *
+              100,
+          ) / 100,
+      },
+    },
+  ];
+}

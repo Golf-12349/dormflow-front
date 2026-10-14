@@ -481,7 +481,7 @@ export const lo = {
       next: "ເດືອນຖັດໄປ",
     },
     /** Note displayed below the cards for features still to be built. */
-    note: "ການອອກໃບແຈ້ງໜີ້, ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
+    note: "ລາຍການໃບແຈ້ງໜີ້ ແລະ ການບັນທຶກການຊຳລະ ຈະມາໃນຂັ້ນຕອນຕໍ່ໄປ.",
     /** `count` is the number of meter readings recorded for the selected period. */
     readingsCount: (count: number) => `ຈົດມິເຕີແລ້ວ ${count} ລາຍການໃນໄລຍະນີ້.`,
     meter: {

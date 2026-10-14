@@ -249,7 +249,7 @@ start (see the notes under the progress log).
 - [x] 7.1 Period selector (current billing period default) with previous/next navigation
 - [x] 7.2 Electric + water meter entry form per room with previous/current readings and live consumption preview
 - [x] 7.3 Validation: current reading must be ≥ previous, no duplicate period entry, per-room feedback
-- [ ] 7.4 Invoice generation from saved readings (room fee + electric + water + other fees, totals recomputed)
+- [x] 7.4 Invoice generation from saved readings (room fee + electric + water + other fees, totals recomputed)
 - [ ] 7.5 Invoice table/list with status badges, paid/outstanding totals and a printable invoice view
 - [ ] 7.6 Record payment action (partial payments update status to `partial`)
 - [ ] 7.7 Utility rate settings (per kWh / per m³) surfaced from the mock service
