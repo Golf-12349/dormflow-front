@@ -23,7 +23,7 @@ import {
   getUtilityReadingsByRoom,
   recordInvoicePayment,
   updateUtilityRates,
-} from "@/lib/mock-data";
+} from "@/lib/api/dormflow";
 import { verifySession } from "@/lib/session";
 import type {
   InvoiceGenerationFormState,
@@ -36,7 +36,7 @@ const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
  * Lao wording for the English errors `createUtilityReading()` in
- * `lib/mock-data.ts` can return (the data layer stays English by
+ * `lib/api/dormflow.ts` can return (the data layer stays English by
  * convention):
  *
  * - `"Room not found."`
@@ -57,7 +57,7 @@ const DATA_LAYER_ERROR_TRANSLATIONS: Array<{
 ];
 
 /**
- * Unknown wording (e.g. the mock data layer is reworded later) falls back to
+ * Unknown wording from the API falls back to
  * `t.billing.meter.errors.unknown` rather than throwing, so the form always
  * shows a Lao message.
  */
@@ -226,7 +226,7 @@ export async function saveMeterReadingAction(
 
 /**
  * Lao wording for the English errors `createInvoice()` in
- * `lib/mock-data.ts` can return (the data layer stays English by
+ * `lib/api/dormflow.ts` can return (the data layer stays English by
  * convention):
  *
  * - `"Room is not billable."`
@@ -476,7 +476,7 @@ function localizeUtilityRateDataLayerError(message: string): string {
   return t.billing.rates.errors.unknown;
 }
 
-/** 7.7 — validate and update the mock utility rates. */
+/** 7.7 — validate and update the utility rates through the API. */
 export async function updateUtilityRatesAction(
   _prevState: UtilityRatesFormState,
   formData: FormData,

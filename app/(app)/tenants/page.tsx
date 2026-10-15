@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
-import { getInvoicesByTenant, getRooms, getTenants } from "@/lib/mock-data";
+import { getInvoices, getRooms, getTenants } from "@/lib/api/dormflow";
 import { AddTenantForm } from "./add-tenant-form";
 import { TenantTable } from "./tenant-table";
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
  * filters are 6.2, applied client-side), `getRooms()` (room-number
  * resolution and the drawer's monthly rate) and each tenant's invoices via
  * `getInvoicesByTenant()` (pre-loaded once for every profile, then flattened
- * into one array — the same "mock dataset is tiny" pattern Rooms 5.6 used;
+ * into one array to avoid repeating the invoice request for each tenant;
  * the drawer still filters by `tenantId` client-side) and passes them down
  * as plain props. All interactivity — the search box, the status filter and
  * the sortable columns (6.2), plus the profile drawer with its lease
@@ -35,13 +35,7 @@ export default async function TenantsPage() {
   // (the Server Action re-checks this against the data layer before writing).
   const vacantRooms = rooms.filter((room) => room.status === "vacant");
 
-  // 6.3 ledger: one getInvoicesByTenant() call per tenant (getInvoices()
-  // filters by period/status/query only), pre-loaded in parallel and
-  // flattened — the table keeps receiving a single mixed array and picks the
-  // selected tenant's invoices client-side, exactly as before.
-  const invoices = (
-    await Promise.all(tenants.map((tenant) => getInvoicesByTenant(tenant.id)))
-  ).flat();
+  const invoices = await getInvoices();
 
   return (
     <div className="space-y-6">

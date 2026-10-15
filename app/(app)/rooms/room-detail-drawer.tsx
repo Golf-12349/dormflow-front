@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { changeRoomStatusAction } from "@/lib/actions/rooms";
+import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
   cn,
@@ -109,6 +110,7 @@ export function RoomDetailDrawer({
       aria-labelledby={titleId}
       className="fixed inset-0 z-40"
     >
+      <ActionResultToast state={statusState} />
       <button
         type="button"
         aria-label={t.rooms.closeDetailsAria}

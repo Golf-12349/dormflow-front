@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { loginAction } from "@/lib/actions/auth";
+import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { LoginFormState } from "@/types";
@@ -38,6 +39,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
+      <ActionResultToast state={state} />
       {state.status === "error" && state.message ? (
         <div
           role="alert"

@@ -1,9 +1,9 @@
 /**
  * Domain type contract for the Dormitory Management System (DMS) frontend.
  *
- * These interfaces describe the shapes the real REST API is expected to return.
- * Until the backend exists, `lib/mock-data.ts` implements this same contract so
- * pages and components never consume raw mock objects directly.
+ * These interfaces describe the frontend domain shapes. API responses are
+ * adapted to this contract so pages and components never consume backend DTOs
+ * directly.
  */
 
 /* -------------------------------------------------------------------------- */
@@ -35,6 +35,8 @@ export interface AuthSession {
   accessToken?: string;
   /** Rotating refresh token; the server invalidates the previous one on use. */
   refreshToken?: string;
+  /** Expiry of the current access token issued by the API. */
+  accessTokenExpiresAt?: string;
 }
 
 /** Mock credential record (replaced by the real auth API later). */
@@ -91,7 +93,7 @@ export type TenantStatus = "active" | "pending" | "inactive";
 
 export interface EmergencyContact {
   name: string;
-  relationship: string;
+  relationship?: string;
   phone: string;
 }
 

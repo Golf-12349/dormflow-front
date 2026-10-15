@@ -6,7 +6,7 @@ import {
   getTenants,
   getUtilityRates,
   getUtilityReadingsByRoom,
-} from "@/lib/mock-data";
+} from "@/lib/api/dormflow";
 import type { Tenant, UtilityReading } from "@/types";
 import { RoomInventoryView } from "./room-inventory-view";
 
@@ -30,9 +30,8 @@ export default async function RoomsPage() {
   ]);
 
   /**
-   * Meter history for every room, pre-loaded in one parallel pass. The mock
-   * dataset is tiny so this is cheap; once the real API replaces the mock layer
-   * this becomes a per-room fetch fired when the drawer opens.
+   * Meter history for every room, pre-loaded in one parallel pass. The backend
+   * currently exposes room-level history, so load those requests concurrently.
    */
   const readingsByRoomId: Record<string, UtilityReading[]> =
     Object.fromEntries(
@@ -79,4 +78,3 @@ export default async function RoomsPage() {
     </div>
   );
 }
-

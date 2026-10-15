@@ -16,7 +16,7 @@ export function Topbar({
   onOpenNavigation,
 }: {
   user: AdminUser;
-  /** Number of invoices still awaiting payment (from the mock metrics). */
+  /** Number of invoices still awaiting payment. */
   alertCount: number;
   onOpenNavigation: () => void;
 }) {
