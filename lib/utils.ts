@@ -118,7 +118,7 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return RELATIVE_TIME_FORMATTER.format(-months, "month");
 }
 
-/** Current billing period as `YYYY-MM` (matches the mock data). */
+/** Current billing period as `YYYY-MM`. */
 export function toBillingPeriod(date: Date = new Date()): BillingPeriod {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }

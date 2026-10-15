@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
+import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { generateInvoiceAction } from "@/lib/actions/billing";
 import { t } from "@/lib/i18n";
 import {
@@ -140,6 +141,7 @@ function InvoiceRow({
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <ActionResultToast state={state} />
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold text-slate-900">
           {t.rooms.roomTitle(room.number)}

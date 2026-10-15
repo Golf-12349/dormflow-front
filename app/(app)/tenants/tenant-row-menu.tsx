@@ -4,6 +4,7 @@ import { useEffect, useActionState, useRef, useState } from "react";
 import { CheckCircle2, Loader2, LogOut, MoreVertical, User } from "lucide-react";
 
 import { checkOutTenantAction } from "@/lib/actions/tenants";
+import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { CheckOutTenantFormState, Tenant } from "@/types";
@@ -123,6 +124,7 @@ export function TenantRowMenu({
       // Menu interactions must not reach the row's click-to-open handler.
       onClick={(event) => event.stopPropagation()}
     >
+      <ActionResultToast state={state} />
       <button
         ref={triggerRef}
         type="button"

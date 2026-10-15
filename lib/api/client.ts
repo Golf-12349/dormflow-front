@@ -1,14 +1,9 @@
 /**
  * Shared fetch client for the real Dormitory Management API.
  *
- * **Not wired into the app yet.** Every screen still reads from
- * `lib/mock-data.ts`; the cross-cutting backlog entry in `workflow.md`
- * ("Replace the mock layer with real fetch calls through `lib/api/client.ts`
- * and delete `lib/mock-data.ts`") is what will move the pages onto this client.
- *
  * Conventions baked into this file:
  *  - Base URL from `NEXT_PUBLIC_API_BASE_URL`, falling back to
- *    `http://localhost:5080/api/v1` for local dev.
+ *    `http://localhost:8080/api/v1` for local dev.
  *  - Responses are `{ success, message, data?, errors?, traceId? }`. `apiRequest`
  *    unwraps them, so callers receive the payload itself and never touch the
  *    envelope. `data` is legitimately absent on action endpoints
@@ -37,7 +32,7 @@
 import { getSessionTokens, saveSessionTokens } from "@/lib/session";
 
 /** Default local backend; override it with `NEXT_PUBLIC_API_BASE_URL`. */
-const FALLBACK_API_BASE_URL = "http://localhost:5080/api/v1";
+const FALLBACK_API_BASE_URL = "http://localhost:8080/api/v1";
 
 /** Refresh endpoint; the only path that is silently retried after a 401. */
 const REFRESH_PATH = "/auth/refresh-token";
@@ -98,6 +93,15 @@ export interface RefreshTokenResponse {
   expiresAt: string;
   /** ISO timestamp the new refresh token expires at. */
   refreshTokenExpiresAt: string;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName?: string;
+    phone?: string | null;
+    roles: string[];
+  };
 }
 
 /** HTTP methods the API uses. */
@@ -124,7 +128,10 @@ export interface ApiRequestOptions
 
 /** Base URL every request is resolved against. */
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || FALLBACK_API_BASE_URL;
+  (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || FALLBACK_API_BASE_URL).replace(
+    /\/+$/u,
+    "",
+  );
 
 /** Narrows an unknown payload to the shared response envelope. */
 function isEnvelope(value: unknown): value is ApiEnvelope<unknown> {
@@ -278,7 +285,8 @@ function refreshAccessToken(): Promise<string | null> {
       await saveSessionTokens({
         accessToken: rotated.accessToken,
         refreshToken: rotated.refreshToken,
-      }).catch(() => undefined);
+        accessTokenExpiresAt: rotated.expiresAt,
+      });
 
       return rotated.accessToken;
     } catch {
@@ -321,5 +329,35 @@ export async function apiRequest<T>(
     }
   }
 
+  throw await toApiError(response);
+}
+
+/** Makes a request that must not inherit or refresh an existing session. */
+export async function apiRequestAnonymous<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const { method = "GET", body, query, headers, ...init } = options;
+  const requestHeaders: Record<string, string> = { ...headers };
+
+  if (body !== undefined && requestHeaders["Content-Type"] === undefined) {
+    requestHeaders["Content-Type"] = "application/json";
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, query), {
+      ...init,
+      method,
+      headers: requestHeaders,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    throw new ApiError(UNREACHABLE_MESSAGE, { status: 0 });
+  }
+
+  if (response.ok) return unwrapResponse<T>(response);
   throw await toApiError(response);
 }

@@ -1,10 +1,8 @@
 /**
  * Session layer for the admin console.
  *
- * The backend does not exist yet, so the "session" is an httpOnly cookie that
- * carries a base64url-encoded JSON payload. Everything the UI needs is behind
- * the helpers below, which means swapping in a real session provider (or an
- * encrypted JWT) later is a change to this file only.
+ * The session is an httpOnly cookie that carries a base64url-encoded JSON
+ * payload, including the tokens issued by the DormFlow API.
  *
  * Only import this module from Server Components, Server Actions, Route
  * Handlers or Proxy — it reads and writes cookies through `next/headers`.
@@ -36,6 +34,7 @@ export function sessionCookieOptions(maxAge: number) {
 export function createSession(
   user: AdminUser,
   remember: boolean,
+  tokens?: SessionTokens & { accessTokenExpiresAt?: string },
 ): { value: string; maxAge: number } {
   const maxAge = remember ? REMEMBER_MAX_AGE_SECONDS : DEFAULT_MAX_AGE_SECONDS;
   const issuedAt = new Date();
@@ -43,6 +42,7 @@ export function createSession(
     user,
     issuedAt: issuedAt.toISOString(),
     expiresAt: new Date(issuedAt.getTime() + maxAge * 1000).toISOString(),
+    ...tokens,
   };
 
   return { value: encodeSessionValue(session), maxAge };
@@ -92,6 +92,7 @@ export const getSession = cache(async (): Promise<AuthSession | null> => {
 export interface SessionTokens {
   accessToken: string;
   refreshToken: string;
+  accessTokenExpiresAt?: string;
 }
 
 /** Reads the token pair from the existing session cookie, when it has one. */
@@ -103,6 +104,7 @@ export const getSessionTokens = cache(
     return {
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
+      accessTokenExpiresAt: session.accessTokenExpiresAt,
     };
   },
 );

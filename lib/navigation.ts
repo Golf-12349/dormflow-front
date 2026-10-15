@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import {
+  ClipboardList,
   DoorOpen,
   LayoutDashboard,
   Receipt,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { t } from "@/lib/i18n";
+import { MANAGEMENT_GROUPS } from "@/lib/management";
 
 /**
  * Navigation model for the admin shell.
@@ -56,6 +58,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Users,
         description: t.nav.tenantsDescription,
       },
+      ...MANAGEMENT_GROUPS.map((group) => ({
+        label: group.title,
+        href: `/management/${group.slug}`,
+        icon: group.icon ?? ClipboardList,
+        description: group.description,
+      })),
     ],
   },
   {
