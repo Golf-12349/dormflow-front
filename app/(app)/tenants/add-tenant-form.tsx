@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, UserPlus } from "lucide-react";
 
 import { createTenantAction } from "@/lib/actions/tenants";
-import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AddTenantFormState, Room } from "@/types";
@@ -44,7 +43,6 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
 
   return (
     <div>
-      <ActionResultToast state={state} />
       <div className="flex justify-end">
         <button
           type="button"
@@ -122,17 +120,27 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
                 name="idCard"
                 label={t.tenants.profile.fields.idCard}
               />
+              <TenantFormField
+                id="add-occupation"
+                name="occupation"
+                label={t.tenants.profile.fields.occupation}
+              />
             </div>
 
             <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <legend className={LEGEND_CLASSES}>
                 {t.tenants.profile.sections.emergency}
               </legend>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <TenantFormField
                   id="add-ec-name"
                   name="emergencyName"
                   label={t.tenants.profile.fields.contactName}
+                />
+                <TenantFormField
+                  id="add-ec-relationship"
+                  name="emergencyRelationship"
+                  label={t.tenants.profile.fields.relationship}
                 />
                 <TenantFormField
                   id="add-ec-phone"

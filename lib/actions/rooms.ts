@@ -11,7 +11,7 @@
 import { revalidatePath } from "next/cache";
 
 import { t } from "@/lib/i18n";
-import { getRoomById, updateRoomStatus } from "@/lib/api/dormflow";
+import { getRoomById, updateRoomStatus } from "@/lib/mock-data";
 import { ROOM_STATUS_LABELS } from "@/lib/utils";
 import type { RoomStatus, RoomStatusFormState } from "@/types";
 
@@ -19,7 +19,7 @@ const ALLOWED_TARGET_STATUSES: RoomStatus[] = ["vacant", "maintenance"];
 
 /**
  * Lao wording for the two English errors `updateRoomStatus()` in
- * `lib/api/dormflow.ts` can return. That module is deliberately left in English
+ * `lib/mock-data.ts` can return. That module is deliberately left in English
  * (do-not-touch), so they are translated here instead:
  *
  * - `"Room not found."`
@@ -52,7 +52,7 @@ function localizeRoomStatus(raw: string): string {
 }
 
 /**
- * Unknown wording from the API is passed
+ * Unknown wording (e.g. the mock data layer is reworded later) is passed
  * through as-is rather than throwing, so the drawer always shows something.
  */
 function localizeDataLayerError(message: string): string {

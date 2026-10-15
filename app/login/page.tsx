@@ -10,6 +10,7 @@ import {
 
 import { LoginForm } from "./login-form";
 import { t } from "@/lib/i18n";
+import { STAFF_ACCOUNTS } from "@/lib/mock-data";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -84,7 +85,7 @@ export default async function LoginPage() {
 
         <p className="flex items-center gap-2 text-xs text-slate-400">
           <ShieldCheck className="size-4" aria-hidden="true" />
-          {t.auth.subheading}
+          {t.auth.demoBuildNote}
         </p>
       </section>
 
@@ -111,6 +112,31 @@ export default async function LoginPage() {
             <LoginForm />
           </div>
 
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-4">
+            <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+              {t.auth.demoCredentials}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {STAFF_ACCOUNTS.map((account) => (
+                <li
+                  key={account.email}
+                  className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"
+                >
+                  <span className="font-medium text-slate-700">
+                    {t.roles[account.user.role] ?? account.user.role}
+                  </span>
+                  <span className="font-mono">
+                    {account.email} / {account.password}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-slate-400">
+              {t.auth.demoCredentialsNotePrefix}
+              <code>lib/mock-data.ts</code>
+              {t.auth.demoCredentialsNoteSuffix}
+            </p>
+          </div>
         </div>
       </section>
     </main>

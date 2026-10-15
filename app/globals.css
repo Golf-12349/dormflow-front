@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
+/*
+ * Dormitory Management System theme tokens.
+ *
+ * The admin console intentionally ships a single light theme for now
+ * (operator dashboards are printed/screenshotted often). The `--background`
+ * and `--foreground` tokens stay in place so a dark theme can be layered in
+ * later by re-declaring them under a `.dark` class.
+ */
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-}
-
-@media screen {
-.dark {
-  color-scheme: dark;
-  --background: #0f172a;
-  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -30,129 +31,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.dark body,
-.dark .bg-slate-50 {
-  background-color: #0f172a;
-}
-
-.dark .bg-white {
-  background-color: #1e293b;
-}
-
-.dark .bg-white\/85 {
-  background-color: #1e293b;
-}
-
-.dark .bg-slate-100 {
-  background-color: #334155;
-}
-
-.dark .bg-slate-100\/80 {
-  background-color: #1e293b;
-}
-
-.dark .bg-slate-200 {
-  background-color: #475569;
-}
-
-.dark .text-slate-900,
-.dark .text-slate-800 {
-  color: #f1f5f9;
-}
-
-.dark .text-slate-700,
-.dark .text-slate-600 {
-  color: #cbd5e1;
-}
-
-.dark .text-slate-500,
-.dark .text-slate-400 {
-  color: #94a3b8;
-}
-
-.dark .border-slate-100,
-.dark .border-slate-200,
-.dark .border-slate-300 {
-  border-color: #334155;
-}
-
-.dark .divide-slate-100 > :not(:last-child) {
-  border-color: #334155;
-}
-
-.dark .bg-slate-50\/70,
-.dark .hover\:bg-slate-50:hover,
-.dark .hover\:bg-slate-50\/70:hover,
-.dark .hover\:bg-slate-100:hover {
-  background-color: #334155;
-}
-
-.dark input,
-.dark select,
-.dark textarea {
-  border-color: #475569;
-  background-color: #1e293b;
-  color: #f1f5f9;
-}
-
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #94a3b8;
-}
-
-.dark .bg-indigo-50 {
-  background-color: #312e81;
-}
-
-.dark .text-indigo-600,
-.dark .text-indigo-700 {
-  color: #c7d2fe;
-}
-
-.dark .border-indigo-200 {
-  border-color: #4338ca;
-}
-
-.dark .bg-emerald-50 {
-  background-color: #064e3b;
-}
-
-.dark .text-emerald-700,
-.dark .text-emerald-800 {
-  color: #a7f3d0;
-}
-
-.dark .border-emerald-200 {
-  border-color: #047857;
-}
-
-.dark .bg-rose-50 {
-  background-color: #881337;
-}
-
-.dark .text-rose-700,
-.dark .text-rose-800 {
-  color: #fecdd3;
-}
-
-.dark .border-rose-200 {
-  border-color: #be123c;
-}
-
-.dark .bg-amber-50 {
-  background-color: #78350f;
-}
-
-.dark .text-amber-700,
-.dark .text-amber-800 {
-  color: #fde68a;
-}
-
-.dark .border-amber-200 {
-  border-color: #b45309;
-}
-}
-
 /* Keyboard focus stays visible and consistent across every control. */
 :focus-visible {
   outline: 2px solid var(--color-indigo-500, #6366f1);
@@ -166,18 +44,6 @@ body {
 }
 
 @media print {
-  .dark body:has(#billing-print-view) {
-    --background: #ffffff;
-    --foreground: #0f172a;
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-
-  .dark body:has(#billing-print-view) #billing-print-view {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-
   body:has(#billing-print-view) * {
     visibility: hidden !important;
   }

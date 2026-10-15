@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Lao } from "next/font/google";
 import "./globals.css";
 
-import { AppFeedbackProvider } from "@/components/providers/app-feedback-provider";
 import { t } from "@/lib/i18n";
 
 const geistSans = Geist({
@@ -36,9 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="lo"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansLao.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <AppFeedbackProvider>{children}</AppFeedbackProvider>
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

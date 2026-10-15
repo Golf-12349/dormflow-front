@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { getDashboardMetrics } from "@/lib/mock-data";
 import { verifySession } from "@/lib/session";
 
 /**
@@ -18,9 +19,10 @@ export default async function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const session = await verifySession();
+  const metrics = await getDashboardMetrics();
 
   return (
-    <AppShell user={session.user} alertCount={0}>
+    <AppShell user={session.user} alertCount={metrics.unpaidInvoices}>
       {children}
     </AppShell>
   );

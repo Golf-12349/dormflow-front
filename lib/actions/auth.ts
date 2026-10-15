@@ -13,45 +13,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { t } from "@/lib/i18n";
-import {
-  ApiError,
-  apiRequest,
-  apiRequestAnonymous,
-} from "@/lib/api/client";
+import { authenticateAdmin } from "@/lib/mock-data";
 import {
   SESSION_COOKIE_NAME,
   createSession,
-  decodeSessionValue,
   sessionCookieOptions,
 } from "@/lib/session";
 import type { LoginFormState } from "@/types";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-interface ApiLoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  expiresAt: string;
-  refreshTokenExpiresAt: string;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone: string | null;
-    roles: string[];
-  };
-}
-
-function frontendRole(roles: string[]): "admin" | "manager" | "staff" {
-  const normalized = roles.map((role) => role.toLowerCase());
-  if (normalized.some((role) => role === "superadmin" || role === "owner")) {
-    return "admin";
-  }
-  if (normalized.some((role) => role === "manager")) return "manager";
-  return "staff";
-}
 
 export async function loginAction(
   prevState: LoginFormState,
@@ -86,49 +56,18 @@ export async function loginAction(
     };
   }
 
-  let result: ApiLoginResponse;
-  try {
-    result = await apiRequestAnonymous<ApiLoginResponse>("/auth/login", {
-      method: "POST",
-      body: { email, password },
-    });
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
-    if (error.status === 401) {
-      return {
-        status: "error",
-        message: t.auth.errors.invalidCredentials,
-        fieldErrors: {},
-        email,
-      };
-    }
+  const user = await authenticateAdmin(email, password);
 
+  if (!user) {
     return {
       status: "error",
-      message: error.message,
-      fieldErrors: {
-        ...(error.errors?.email ? { email: error.errors.email.join(" ") } : {}),
-        ...(error.errors?.password
-          ? { password: error.errors.password.join(" ") }
-          : {}),
-      },
+      message: t.auth.errors.invalidCredentials,
+      fieldErrors: {},
       email,
     };
   }
 
-  const user = {
-    id: result.user.id,
-    name: `${result.user.firstName} ${result.user.lastName}`.trim(),
-    email: result.user.email,
-    phone: result.user.phone ?? "",
-    role: frontendRole(result.user.roles),
-    avatarClass: "bg-indigo-500",
-  };
-  const { value, maxAge } = createSession(user, remember, {
-    accessToken: result.accessToken,
-    refreshToken: result.refreshToken,
-    accessTokenExpiresAt: result.expiresAt,
-  });
+  const { value, maxAge } = createSession(user, remember);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, value, sessionCookieOptions(maxAge));
 
@@ -137,23 +76,6 @@ export async function loginAction(
 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
-  const session = decodeSessionValue(
-    cookieStore.get(SESSION_COOKIE_NAME)?.value,
-  );
-
-  if (session?.refreshToken) {
-    try {
-      await apiRequest("/auth/logout", {
-        method: "POST",
-        body: { refreshToken: session.refreshToken },
-      });
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.status !== 401) {
-        console.error("DormFlow API logout failed.", error);
-      }
-    }
-  }
-
   cookieStore.delete(SESSION_COOKIE_NAME);
   redirect("/login");
 }

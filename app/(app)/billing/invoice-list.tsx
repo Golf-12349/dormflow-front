@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 import { AlertCircle, CheckCircle2, Printer } from "lucide-react";
 
 import { recordInvoicePaymentAction } from "@/lib/actions/billing";
-import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -118,7 +117,6 @@ function InvoiceRow({
   return (
     <tr className="align-top">
       <th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-        <ActionResultToast state={state} />
         {invoice.invoiceNumber}
         {state.status !== "idle" && state.message ? (
           <span

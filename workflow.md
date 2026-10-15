@@ -1,7 +1,7 @@
 # Dormitory Management System — Frontend Development Roadmap
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS v4 · lucide-react
-**Backend:** DormFlow API (`http://localhost:8080/api/v1` by default), accessed through a shared server-side client and DTO adapter.
+**Backend:** not available yet → **frontend-first** with a mocked data layer (`lib/mock-data.ts`).
 
 Checkboxes are ticked as tasks are completed. Unfinished work for a phase stays unchecked so the
 next session can pick it up without re-reading the whole codebase.
@@ -15,7 +15,7 @@ next session can pick it up without re-reading the whole codebase.
 | Numbers and currency | keep en-US grouping (comma thousands) until a Lao speaker confirms; dates and relative time use the lo-LA locale |
 | Routing | App Router, `app/` at project root, no `src/` folder |
 | Aliases | `@/*` → project root (`@/types`, `@/lib/utils`, `@/components/...`) |
-| Data access | Pages are **Server Components** and call async functions from `lib/api/dormflow.ts`, which maps backend DTOs through `lib/api/client.ts` |
+| Data access | Pages are **Server Components** and call async functions from `lib/mock-data.ts`; the mock layer is the only place that owns data so swapping in `fetch()` later is a one-file change |
 | HTTP client | native fetch, one shared helper in `lib/api/client.ts`; handles auth header, response envelope unwrapping, and refresh-token rotation |
 | Mutations | Server Actions in `lib/actions/*` (Next 16: `'use server'`, `redirect` outside `try/catch`) |
 | Session | `httpOnly` cookie `dms_session` holding a base64url JSON payload; guards live in `lib/session.ts` (`getSession`, `verifySession`) |
@@ -258,7 +258,7 @@ start (see the notes under the progress log).
 
 ## Cross-cutting backlog (after Phase 7)
 
-- [x] Connect dashboard, rooms, tenants, billing, settings, authentication, and mutations to the DormFlow API through `lib/api/client.ts` and `lib/api/dormflow.ts`
+- [ ] Replace the mock layer with real fetch calls through `lib/api/client.ts` and delete `lib/mock-data.ts`
 - [ ] Toast/notification system for Server Action results
 - [ ] Dark theme pass using the existing CSS variables
 - [ ] Optional: adopt a standard, framework-based test runner (e.g. Vitest for `lib/*`, Playwright for flows) if the team wants automated coverage — no hand-rolled browser scripts (see the verification policy above)
@@ -268,7 +268,6 @@ start (see the notes under the progress log).
 
 | Date | Phase | Notes |
 | --- | --- | --- |
-| 2026-10-22 | Integration | Connected frontend authentication/session and dashboard, rooms, tenants, billing, and settings data flows to the DormFlow API at `http://localhost:8080/api/v1` (overridable by `NEXT_PUBLIC_API_BASE_URL`). Added DTO adapters, API-backed server actions, page revalidation, API invoice-status handling, and removed tenant form fields the backend cannot persist (occupation and emergency-contact relationship). Legacy `lib/mock-data.ts` is no longer used by application routes. |
 | 2026-09-16 | Phase 1 | `lucide-react` installed; domain contract in `types/index.ts`; helpers in `lib/utils.ts`; mock dataset + service in `lib/mock-data.ts`; root layout metadata + theme tokens updated. `tsc --noEmit`, `eslint` and `next build` all clean |
 | 2026-09-16 | Phase 2 | Cookie session layer (`lib/session.ts`), auth Server Actions (`lib/actions/auth.ts`), `/login` page + client form, root redirect and guarded route. Behaviour checked by hand in the browser: wrong password, field validation, login redirect, httpOnly cookie, bounce-back from `/login`, sign-out, guard after sign-out |
 | 2026-09-16 | Phase 3 | Authenticated shell: `app/(app)/` route group with guarded layout, `lib/navigation.ts` nav model, `sidebar-nav.tsx`, `topbar.tsx`, `app-shell.tsx`, `app/(app)/loading.tsx`, `proxy.ts` cookie pre-check and placeholders for `/rooms`, `/tenants`, `/billing`, `/settings`. Cleanup: removed the temporary debug route and every ad-hoc test script/log |
@@ -286,8 +285,8 @@ start (see the notes under the progress log).
 | 2026-10-14 | Phase 7 | Completed 7.5–7.7: invoice list with status badges, billed/collected/outstanding totals, printable invoice detail, and payment forms; Server Actions validate payment amounts and utility rates, verify the session, localize data-layer errors, and revalidate billing/dashboard/tenant/settings screens. Mock mutations persist rates on `globalThis`, snapshot them on future readings, update invoice status and tenant balance, and leave existing reading rates unchanged. Added `app/(app)/billing/invoice-list.tsx` and `utility-rate-settings.tsx`; updated billing page/actions/mock data, types, Lao catalog, print styles, settings placeholder, and this roadmap. `npx tsc --noEmit`, `npm run lint`, and `npm run build` clean. Manual browser click-through not performed in this session. |
 
 
-### Notes for the next session
+### Notes for the next session (after Phase 7)
 
-- Dashboard, rooms, tenants, billing, settings, authentication, and their mutations now use the DormFlow API. `lib/mock-data.ts` remains as an unused legacy reference and is not the application source of truth.
-- Remaining cross-cutting work: toast notifications, theme work, and pagination/virtualisation for larger datasets.
+- Phase 7 is closed (7.1–7.7 all `[x]`): `/billing` now includes period summaries, meter entry, invoice generation/listing, payment recording, printable invoice details, and editable utility rates.
+- Continue with the cross-cutting backlog above. The mock service remains the source of truth; real API wiring, toast notifications, theme work, and pagination are still open.
 - New Phase 7 UI strings were added to `lib/i18n/lo.ts` and reuse the existing invoice status maps and formatting helpers. Manual browser click-through remains to be done.

@@ -4,7 +4,6 @@ import { useActionState } from "react";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import { updateUtilityRatesAction } from "@/lib/actions/billing";
-import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { UtilityRatesFormState } from "@/types";
@@ -32,7 +31,6 @@ export function UtilityRateSettings({
       aria-labelledby="utility-rates-title"
       className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
     >
-      <ActionResultToast state={state} />
       <div className="mb-4">
         <h2
           id="utility-rates-title"

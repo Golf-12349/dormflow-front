@@ -26,7 +26,7 @@ import {
   getRevenueTrend,
   getRooms,
   shiftPeriod,
-} from "@/lib/api/dormflow";
+} from "@/lib/mock-data";
 import { verifySession } from "@/lib/session";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -146,7 +146,7 @@ const RING_RADIUS = 42;
 const RING_STROKE = 10;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-/** Periods displayed in the revenue chart. */
+/** Periods drawn in the revenue chart (the mock layer seeds exactly six). */
 const REVENUE_PERIODS = 6;
 
 /** Legend + bar colours for the two revenue series. */
@@ -286,7 +286,7 @@ function EmptyState({ message }: { message: string }) {
  * 4.1 — the four counters, each with a trend delta against the previous billing
  * period. Current values keep coming from `getDashboardMetrics()` and the
  * previous period is derived with `shiftPeriod()`; `getRevenueTrend()` is the
- * only period-scoped history available here, so revenue is compared point
+ * only period-scoped history the mock layer keeps, so revenue is compared point
  * against point while room/tenant counts (a single current snapshot with no
  * month dimension) render a flat chip.
  * 4.2 — occupancy per floor (`getFloorOccupancy()`) as one stacked bar per floor

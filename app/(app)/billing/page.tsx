@@ -11,9 +11,12 @@ import {
   getUtilityReadings,
   getUtilityReadingsByRoom,
   shiftPeriod,
-} from "@/lib/api/dormflow";
+} from "@/lib/mock-data";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
-import type { Invoice, Room, UtilityReading } from "@/types";
+import type { Invoice, Room, UtilityReading 
+
+  
+} from "@/types";
 import { InvoiceGeneration, type InvoiceRoom } from "./invoice-generation";
 import { InvoiceList } from "./invoice-list";
 import { MeterEntry, type MeterRoom } from "./meter-entry";
@@ -27,14 +30,14 @@ export const metadata: Metadata = {
  * Phase 7 — billing screen (Server Component).
  *
  * Loads period summaries, per-room readings, invoices, and the current
- * utility rates from the DormFlow API; client forms receive plain props.
+ * utility rates from the mock service; client forms receive plain props.
  */
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Validated period from 7.1 — reused as-is, never re-parsed below.
+    // Validated period from 7.1 — reused as-is, never re-parsed below.
   const resolvedParams = await searchParams;
   const period =
     typeof resolvedParams.period === "string" &&

@@ -15,7 +15,6 @@ import {
   checkOutTenantAction,
   updateTenantContactAction,
 } from "@/lib/actions/tenants";
-import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -167,8 +166,6 @@ export function TenantDetailDrawer({
       aria-labelledby={titleId}
       className="fixed inset-0 z-40"
     >
-      <ActionResultToast state={contactState} />
-      <ActionResultToast state={checkOutState} />
       <button
         type="button"
         aria-label={t.tenants.profile.closeDetailsAria}
@@ -263,6 +260,12 @@ export function TenantDetailDrawer({
                   name="emergencyName"
                   label={t.tenants.profile.fields.contactName}
                   defaultValue={tenant.emergencyContact.name}
+                />
+                <TenantFormField
+                  id="contact-ec-relationship"
+                  name="emergencyRelationship"
+                  label={t.tenants.profile.fields.relationship}
+                  defaultValue={tenant.emergencyContact.relationship}
                 />
                 <TenantFormField
                   id="contact-ec-phone"
@@ -395,6 +398,14 @@ export function TenantDetailDrawer({
                 </dt>
                 <dd className={DD_CLASSES}>{formatCurrency(tenant.deposit)}</dd>
               </div>
+              <div className={ROW_CLASSES}>
+                <dt className={DT_CLASSES}>
+                  {t.tenants.profile.fields.occupation}
+                </dt>
+                <dd className={cn(DD_CLASSES, "truncate")}>
+                  {tenant.occupation}
+                </dd>
+              </div>
             </dl>
 
             {/*
@@ -465,6 +476,14 @@ export function TenantDetailDrawer({
                   </dt>
                   <dd className={DD_CLASSES}>
                     {tenant.emergencyContact.name}
+                  </dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>
+                    {t.tenants.profile.fields.relationship}
+                  </dt>
+                  <dd className={DD_CLASSES}>
+                    {tenant.emergencyContact.relationship}
                   </dd>
                 </div>
                 <div className={ROW_CLASSES}>

@@ -2,7 +2,8 @@
  * Route-level loading state for every authenticated page.
  *
  * It lives in the `(app)` route group, so the sidebar and topbar stay mounted
- * while the page data is resolving, including requests to the backend API.
+ * while the page data is resolving — the mock service adds ~180ms of latency
+ * per call, which is exactly the kind of pause this covers.
  */
 
 import { t } from "@/lib/i18n";

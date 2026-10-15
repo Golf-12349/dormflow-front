@@ -20,19 +20,19 @@ import {
   getRoomById,
   getTenantById,
   updateTenantContact,
-} from "@/lib/api/dormflow";
+} from "@/lib/mock-data";
 import type {
   AddTenantFormState,
   CheckOutTenantFormState,
   EditContactFormState,
 } from "@/types";
 
-/** Deliberately loose shape check; the backend performs the authoritative validation. */
+/** Deliberately loose shape check; the mock layer does no RFC validation. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Lao wording for the English errors `createTenant()` /
- * `updateTenantContact()` / `checkOutTenant()` in `lib/api/dormflow.ts` can
+ * `updateTenantContact()` / `checkOutTenant()` in `lib/mock-data.ts` can
  * return (the data layer stays English by convention):
  *
  * - `"Room not found."`
@@ -73,7 +73,7 @@ const DATA_LAYER_ERROR_TRANSLATIONS: Array<{
 ];
 
 /**
- * Unknown wording from the API is passed
+ * Unknown wording (e.g. the mock data layer is reworded later) is passed
  * through as-is rather than throwing, so the form always shows something.
  */
 function localizeDataLayerError(message: string): string {
@@ -103,7 +103,9 @@ export async function createTenantAction(
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
   const idCard = readField(formData, "idCard");
+  const occupation = readField(formData, "occupation");
   const emergencyName = readField(formData, "emergencyName");
+  const emergencyRelationship = readField(formData, "emergencyRelationship");
   const emergencyPhone = readField(formData, "emergencyPhone");
   const roomId = readField(formData, "roomId") || null;
 
@@ -124,10 +126,19 @@ export async function createTenantAction(
   if (!idCard) {
     return { status: "error", message: t.tenants.errors.idCardRequired };
   }
+  if (!occupation) {
+    return { status: "error", message: t.tenants.errors.occupationRequired };
+  }
   if (!emergencyName) {
     return {
       status: "error",
       message: t.tenants.errors.emergencyNameRequired,
+    };
+  }
+  if (!emergencyRelationship) {
+    return {
+      status: "error",
+      message: t.tenants.errors.emergencyRelationshipRequired,
     };
   }
   if (!emergencyPhone) {
@@ -156,8 +167,10 @@ export async function createTenantAction(
     email,
     phone,
     idCard,
+    occupation,
     emergencyContact: {
       name: emergencyName,
+      relationship: emergencyRelationship,
       phone: emergencyPhone,
     },
     roomId,
@@ -169,7 +182,8 @@ export async function createTenantAction(
 
   revalidatePath("/tenants");
   revalidatePath("/dashboard");
-  // Creating a contract changes the room's status, so refresh the rooms screen.
+  // Creating with a room flips that room to "occupied" in the mock layer, so
+  // the rooms screen has to refetch as well.
   if (result.tenant.roomId) {
     revalidatePath("/rooms");
   }
@@ -192,6 +206,7 @@ export async function updateTenantContactAction(
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
   const emergencyName = readField(formData, "emergencyName");
+  const emergencyRelationship = readField(formData, "emergencyRelationship");
   const emergencyPhone = readField(formData, "emergencyPhone");
 
   if (!tenantId) {
@@ -212,6 +227,12 @@ export async function updateTenantContactAction(
       message: t.tenants.errors.emergencyNameRequired,
     };
   }
+  if (!emergencyRelationship) {
+    return {
+      status: "error",
+      message: t.tenants.errors.emergencyRelationshipRequired,
+    };
+  }
   if (!emergencyPhone) {
     return {
       status: "error",
@@ -230,6 +251,7 @@ export async function updateTenantContactAction(
     phone,
     emergencyContact: {
       name: emergencyName,
+      relationship: emergencyRelationship,
       phone: emergencyPhone,
     },
   });
