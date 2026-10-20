@@ -3,16 +3,21 @@ import {
   BedDouble,
   Building2,
   CalendarDays,
+  ChartNoAxesCombined,
+  CreditCard,
   DoorOpen,
   FileText,
+  Gauge,
   Home,
   Landmark,
   Layers,
   LayoutDashboard,
+  PiggyBank,
   Receipt,
   Settings,
   UserRound,
   Users,
+  Wallet,
   Warehouse,
 } from "lucide-react";
 
@@ -61,6 +66,16 @@ const RESIDENT_MODULE_ICONS: Record<string, NavIcon> = {
   reservations: CalendarDays,
 };
 
+const FINANCE_MODULE_ICONS: Record<string, NavIcon> = {
+  "meter-readings": Gauge,
+  invoices: FileText,
+  payments: CreditCard,
+  deposits: PiggyBank,
+  expenses: Wallet,
+  receipts: Receipt,
+  reports: ChartNoAxesCombined,
+};
+
 function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
   const href = `/management/${group.slug}`;
   const item: NavItem = {
@@ -86,6 +101,16 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: RESIDENT_MODULE_ICONS[module.slug] ?? Users,
+      description: module.description,
+    }));
+  }
+
+  if (group.slug === "finance") {
+    item.overviewHref = href;
+    item.children = group.modules.map((module) => ({
+      label: module.title,
+      href: module.href ?? `${href}/${module.slug}`,
+      icon: FINANCE_MODULE_ICONS[module.slug] ?? Receipt,
       description: module.description,
     }));
   }

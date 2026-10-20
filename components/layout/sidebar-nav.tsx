@@ -132,7 +132,7 @@ export function SidebarNav({
 
                 return (
                   <Link
-                    key={child.href}
+                    key={`${child.href}-${child.label}`}
                     href={child.href}
                     onClick={onNavigate}
                     aria-current={childIsActive ? "page" : undefined}
