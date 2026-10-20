@@ -4,7 +4,7 @@ import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { ManagementRecordsTable } from "@/components/management/management-records-table";
-import { getManagementRecords } from "@/lib/api/management";
+import { getManagementRecords, getOutstandingInvoiceRecords } from "@/lib/api/management";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
 import {
@@ -32,17 +32,47 @@ export async function generateMetadata({
 
 export default async function ManagementModulePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ group: string; resource: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { group: groupSlug, resource } = await params;
   const result = getManagementModule(groupSlug, resource);
   if (!result) notFound();
 
   let records;
+  let outstandingRecords;
+  const filters = await searchParams;
+  const fromValue = filters?.periodFrom;
+  const toValue = filters?.periodTo;
+  const validDate = (value: string | string[] | undefined): value is string =>
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
+    (() => {
+      const [year, month, day] = value.split("-").map(Number);
+      const parsed = new Date(Date.UTC(year, month - 1, day));
+      return parsed.getUTCFullYear() === year &&
+        parsed.getUTCMonth() === month - 1 &&
+        parsed.getUTCDate() === day;
+    })();
+  const now = new Date();
+  const defaultTo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const defaultFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString().slice(0, 10);
+  const reportPeriod = {
+    periodFrom: validDate(fromValue) ? fromValue : defaultFrom,
+    periodTo: validDate(toValue) ? toValue : defaultTo,
+  };
   let apiError: ApiError | undefined;
   try {
-    records = await getManagementRecords(result.module);
+    if (result.module.slug === "reports") {
+      [records, outstandingRecords] = await Promise.all([
+        getManagementRecords(result.module, reportPeriod),
+        getOutstandingInvoiceRecords(),
+      ]);
+    } else {
+      records = await getManagementRecords(result.module);
+    }
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     apiError = error;
@@ -86,6 +116,8 @@ export default async function ManagementModulePage({
       group={result.group}
       module={result.module}
       records={records}
+      relatedRecords={outstandingRecords}
+      reportPeriod={reportPeriod}
     />
   );
 }

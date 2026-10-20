@@ -39,8 +39,9 @@ function queryFor(module: ManagementModule): Record<string, string | number> {
 
 export async function getManagementRecords(
   module: ManagementModule,
+  queryOverrides: Record<string, string> = {},
 ): Promise<ManagementRecords> {
-  const query = queryFor(module);
+  const query = { ...queryFor(module), ...(module.slug === "reports" ? queryOverrides : {}) };
   const first = await apiRequest<unknown>(module.endpoint, {
     query: { page: 1, pageSize: 100, ...query },
     cache: "no-store",
@@ -65,4 +66,27 @@ export async function getManagementRecords(
   }
 
   return { items, totalCount };
+}
+
+export async function getOutstandingInvoiceRecords(): Promise<ManagementRecords> {
+  const first = await apiRequest<unknown>("/reports/outstanding-invoices", {
+    query: { page: 1, pageSize: 100 },
+    cache: "no-store",
+  });
+  if (Array.isArray(first) || !isRecord(first) || !Array.isArray(first.items)) {
+    const items = toRecords(first);
+    return { items, totalCount: items.length };
+  }
+
+  const page = first as PagedResponse;
+  const items = toRecords(page.items);
+  const totalPages = Math.max(1, page.totalPages ?? 1);
+  for (let current = 2; current <= totalPages; current += 1) {
+    const result = await apiRequest<PagedResponse>("/reports/outstanding-invoices", {
+      query: { page: current, pageSize: 100 },
+      cache: "no-store",
+    });
+    items.push(...toRecords(result.items));
+  }
+  return { items, totalCount: page.totalCount ?? items.length };
 }
