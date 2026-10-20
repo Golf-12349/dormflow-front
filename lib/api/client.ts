@@ -177,9 +177,15 @@ async function readPayload(response: Response): Promise<unknown> {
 async function toApiError(response: Response): Promise<ApiError> {
   const payload = await readPayload(response);
   const envelope = isEnvelope(payload) ? payload : undefined;
+  const responseText =
+    typeof payload === "string" ? payload.trim() : undefined;
+  const isHtmlErrorPage =
+    responseText !== undefined &&
+    (/^\s*<!doctype html\b/iu.test(responseText) ||
+      /^\s*<html\b/iu.test(responseText));
   const fallback =
-    typeof payload === "string" && payload.trim()
-      ? payload.trim()
+    responseText && !isHtmlErrorPage
+      ? responseText
       : `Request failed with status ${response.status}.`;
 
   return new ApiError(envelope?.message || fallback, {

@@ -545,6 +545,12 @@ export const lo = {
      * `ROOM_STATUS_LABELS` / `INVOICE_STATUS_LABELS` (`lib/utils.ts`) and
      * `t.roles` are reused as-is. The browser-tab title reuses `t.nav.overview`.
      */
+    loadError: {
+      title: "ບໍ່ສາມາດໂຫຼດພາບລວມໄດ້",
+      description:
+        "ບໍລິການ API ອາດບໍ່ພ້ອມໃຊ້ງານ. ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ ແລະ ລອງໃໝ່.",
+      retry: "ລອງໃໝ່",
+    },
     /** `name` is the signed-in user's first name (data). */
     welcomeBack: (name: string) => `ຍິນດີຕ້ອນຮັບກັບມາ, ${name}`,
     /** `period` is Lao already (`formatPeriod`); the dash is a plain em dash. */
