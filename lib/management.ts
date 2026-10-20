@@ -110,7 +110,9 @@ export function getManagementModule(
   moduleSlug: string,
 ): { group: ManagementGroup; module: ManagementModule } | undefined {
   const group = getManagementGroup(groupSlug);
-  const managementModule = group?.modules.find((item) => item.slug === moduleSlug);
+  const managementModule = group?.modules.find(
+    (item) => item.slug === moduleSlug && !item.href,
+  );
   return group && managementModule
     ? { group, module: managementModule }
     : undefined;

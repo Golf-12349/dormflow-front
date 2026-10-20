@@ -6,7 +6,7 @@ import type { ManagementGroup } from "@/lib/management";
 export function ManagementGroupCards({ group }: { group: ManagementGroup }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {group.modules.map((module) => (
+      {group.modules.filter((module) => !module.href).map((module) => (
         <Link
           key={module.slug}
           href={module.href ?? `/management/${group.slug}/${module.slug}`}

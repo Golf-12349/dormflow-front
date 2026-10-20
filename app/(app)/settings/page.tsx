@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 
 import { ConsolePreferences } from "@/components/settings/console-preferences";
-import {
-  StaffAccountManager,
-  type StaffAccount,
-} from "@/components/settings/staff-account-manager";
-import { ApiError, apiRequest } from "@/lib/api/client";
 import { getUtilityRates } from "@/lib/api/dormflow";
 import { t } from "@/lib/i18n";
 import { verifySession } from "@/lib/session";
@@ -15,55 +10,9 @@ export const metadata: Metadata = {
   title: t.nav.settings,
 };
 
-type ApiStaffAccount = StaffAccount;
-
-interface PagedUsers {
-  items: ApiStaffAccount[];
-  totalPages: number;
-}
-
-async function getStaffAccounts(): Promise<StaffAccount[]> {
-  const firstPage = await apiRequest<PagedUsers>("/users", {
-    query: { page: 1, pageSize: 200 },
-    cache: "no-store",
-  });
-  const accounts = [...firstPage.items];
-
-  for (let page = 2; page <= firstPage.totalPages; page += 1) {
-    const result = await apiRequest<PagedUsers>("/users", {
-      query: { page, pageSize: 200 },
-      cache: "no-store",
-    });
-    accounts.push(...result.items);
-  }
-
-  return accounts.filter((account) =>
-    account.roles.length === 0 ||
-      account.roles.some((role) =>
-        ["Owner", "DormManager", "Accountant", "Staff", "Technician"].includes(
-          role,
-        ),
-      ),
-  );
-}
-
 export default async function SettingsPage() {
   const session = await verifySession();
-  const [rates, accountResult] = await Promise.all([
-    getUtilityRates(),
-    getStaffAccounts().then(
-      (accounts) => ({ accounts, error: null }),
-      (error: unknown) => ({
-        accounts: [] as StaffAccount[],
-        error:
-          error instanceof ApiError && error.status === 403
-            ? t.settings.staff.permissionError
-            : error instanceof Error
-              ? error.message
-              : t.settings.staff.loadError,
-      }),
-    ),
-  ]);
+  const rates = await getUtilityRates();
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -126,11 +75,6 @@ export default async function SettingsPage() {
       </div>
 
       <ConsolePreferences userId={session.user.id} />
-      <StaffAccountManager
-        accounts={accountResult.accounts}
-        currentUserId={session.user.id}
-        loadError={accountResult.error}
-      />
     </div>
   );
 }

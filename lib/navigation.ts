@@ -115,7 +115,7 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
 
   if (group.slug === "properties") {
     item.overviewHref = href;
-    item.children = group.modules.map((module) => ({
+    item.children = group.modules.filter((module) => !module.href).map((module) => ({
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: PROPERTY_MODULE_ICONS[module.slug] ?? Building2,
@@ -125,7 +125,7 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
 
   if (group.slug === "residents") {
     item.overviewHref = href;
-    item.children = group.modules.map((module) => ({
+    item.children = group.modules.filter((module) => !module.href).map((module) => ({
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: RESIDENT_MODULE_ICONS[module.slug] ?? Users,
@@ -135,7 +135,7 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
 
   if (group.slug === "finance") {
     item.overviewHref = href;
-    item.children = group.modules.map((module) => ({
+    item.children = group.modules.filter((module) => !module.href).map((module) => ({
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: FINANCE_MODULE_ICONS[module.slug] ?? Receipt,
@@ -145,7 +145,7 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
 
   if (group.slug === "services") {
     item.overviewHref = href;
-    item.children = group.modules.map((module) => ({
+    item.children = group.modules.filter((module) => !module.href).map((module) => ({
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: SERVICE_MODULE_ICONS[module.slug] ?? Wrench,
@@ -155,7 +155,7 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
 
   if (group.slug === "administration") {
     item.overviewHref = href;
-    item.children = group.modules.map((module) => ({
+    item.children = group.modules.filter((module) => !module.href).map((module) => ({
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: ADMINISTRATION_MODULE_ICONS[module.slug] ?? Cog,
