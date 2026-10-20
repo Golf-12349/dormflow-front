@@ -6,6 +6,7 @@ import {
   CarFront,
   CalendarDays,
   ChartNoAxesCombined,
+  Cog,
   ContactRound,
   CreditCard,
   DoorOpen,
@@ -19,12 +20,16 @@ import {
   Package,
   PiggyBank,
   Receipt,
+  ScrollText,
+  ShieldCheck,
   Settings,
+  Settings2,
   UserRound,
   Users,
   Wallet,
   Warehouse,
   Wrench,
+  KeyRound,
 } from "lucide-react";
 
 import { t } from "@/lib/i18n";
@@ -91,6 +96,14 @@ const SERVICE_MODULE_ICONS: Record<string, NavIcon> = {
   notifications: BellRing,
 };
 
+const ADMINISTRATION_MODULE_ICONS: Record<string, NavIcon> = {
+  users: UserRound,
+  roles: ShieldCheck,
+  permissions: KeyRound,
+  "audit-logs": ScrollText,
+  settings: Settings2,
+};
+
 function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
   const href = `/management/${group.slug}`;
   const item: NavItem = {
@@ -136,6 +149,16 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: SERVICE_MODULE_ICONS[module.slug] ?? Wrench,
+      description: module.description,
+    }));
+  }
+
+  if (group.slug === "administration") {
+    item.overviewHref = href;
+    item.children = group.modules.map((module) => ({
+      label: module.title,
+      href: module.href ?? `${href}/${module.slug}`,
+      icon: ADMINISTRATION_MODULE_ICONS[module.slug] ?? Cog,
       description: module.description,
     }));
   }
