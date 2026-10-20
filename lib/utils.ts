@@ -7,7 +7,7 @@
 import type { BillingPeriod, RoomStatus, TenantStatus, InvoiceStatus } from "@/types";
 
 /** Single place to change the currency of the whole application. */
-export const CURRENCY = "USD";
+export const CURRENCY = "LAK";
 
 /** Joins conditional class names without pulling in a dependency. */
 export function cn(...classes: Array<string | false | null | undefined>): string {
@@ -15,7 +15,7 @@ export function cn(...classes: Array<string | false | null | undefined>): string
 }
 
 export function formatCurrency(value: number, options?: { compact?: boolean }): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("lo-LA", {
     style: "currency",
     currency: CURRENCY,
     notation: options?.compact ? "compact" : "standard",
@@ -28,11 +28,11 @@ export function formatNumber(value: number): string {
 }
 
 /**
- * Unit prices keep cents (e.g. `$0.18 / kWh`), unlike the whole-dollar totals
- * that `formatCurrency` rounds for readability.
+ * Unit prices retain two fractional digits so small utility rates remain
+ * visible, unlike the whole-kip totals that `formatCurrency` rounds.
  */
 export function formatUnitPrice(value: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("lo-LA", {
     style: "currency",
     currency: CURRENCY,
     minimumFractionDigits: 2,
