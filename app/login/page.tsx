@@ -39,10 +39,15 @@ const HIGHLIGHTS = [
   },
 ];
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  const { reason } = await searchParams;
   // Already signed in? Skip the form entirely.
   const session = await getSession();
-  if (session) {
+  if (session && reason !== "session-expired") {
     redirect("/dashboard");
   }
 
@@ -108,7 +113,13 @@ export default async function LoginPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-            <LoginForm />
+            <LoginForm
+              notice={
+                reason === "session-expired"
+                  ? t.auth.sessionExpiredNotice
+                  : undefined
+              }
+            />
           </div>
 
         </div>

@@ -17,6 +17,7 @@ export const lo = {
     settings: "ການຕັ້ງຄ່າ",
     signOut: "ອອກຈາກລະບົບ",
     /** Topbar subtitles; kept next to the nav labels they describe. */
+    openGroupOverview: (name: string) => `ເປີດໜ້າພາບລວມ: ${name}`,
     overviewDescription: "ອັດຕາການເຂົ້າພັກ, ລາຍຮັບ ແລະ ກິດຈະກຳຫຼ້າສຸດ",
     roomsDescription: "ສະຖານະຫ້ອງແຕ່ລະຊັ້ນ, ຄ່າເຊົ່າ ແລະ ສິ່ງອຳນວຍຄວາມສະດວກ",
     tenantsDescription: "ຂໍ້ມູນຜູ້ເຊົ່າ, ສັນຍາເຊົ່າ ແລະ ຍອດຄ້າງຊຳລະ",
@@ -386,6 +387,7 @@ export const lo = {
     /** Form panel copy. */
     heading: "ເຂົ້າສູ່ລະບົບຄອນໂຊນຈັດການ",
     subheading: "ໃຊ້ບັນຊີພະນັກງານຂອງທ່ານ ເພື່ອຈັດການຫໍພັກ.",
+    sessionExpiredNotice: "ເຊດຊັນໝົດອາຍຸ ຫຼື ບໍ່ຖືກຕ້ອງ. ກະລຸນາເຂົ້າລະບົບໃໝ່.",
     demoCredentials: "ບັນຊີສາທິດ",
     /** Split around the inline `<code>lib/mock-data.ts</code>` element. */
     demoCredentialsNotePrefix: "Mock auth — ກວດສອບໂດຍ ",

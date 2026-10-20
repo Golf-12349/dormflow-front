@@ -1,10 +1,20 @@
 "use client";
 
+import { useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LogOut } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  ChevronDown,
+  LogOut,
+} from "lucide-react";
 
-import { NAV_SECTIONS, isActivePath } from "@/lib/navigation";
+import {
+  NAV_SECTIONS,
+  isActivePath,
+  type NavItem,
+} from "@/lib/navigation";
 import { logoutAction } from "@/lib/actions/auth";
 import { t } from "@/lib/i18n";
 import { cn, initials } from "@/lib/utils";
@@ -25,6 +35,129 @@ export function SidebarNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const instanceId = useId();
+  const [expansionOverride, setExpansionOverride] = useState<{
+    pathname: string;
+    expanded: boolean;
+  } | null>(null);
+
+  function renderItem(item: NavItem) {
+    const Icon = item.icon;
+    const childActive =
+      item.children?.some((child) => isActivePath(pathname, child.href)) ??
+      false;
+    const active = isActivePath(pathname, item.href) || childActive;
+
+    if (!item.children?.length) {
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
+            active
+              ? "bg-indigo-500 text-white shadow-sm"
+              : "text-slate-300 hover:bg-white/5 hover:text-white",
+          )}
+        >
+          <Icon className="size-4 shrink-0" />
+          {item.label}
+        </Link>
+      );
+    }
+
+    const expanded =
+      childActive ||
+      (expansionOverride?.pathname === pathname &&
+        expansionOverride.expanded);
+    const submenuId = `${instanceId}-${item.href.replace(/[^a-z0-9]/giu, "-")}`;
+
+    return (
+      <div key={item.href}>
+        <div
+          className={cn(
+            "flex items-center rounded-xl text-sm font-medium transition",
+            active
+              ? "bg-indigo-500 text-white shadow-sm"
+              : "text-slate-300 hover:bg-white/5 hover:text-white",
+          )}
+        >
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={submenuId}
+            onClick={() =>
+              setExpansionOverride({ pathname, expanded: !expanded })
+            }
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-2 text-left"
+          >
+            <Icon className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1">{item.label}</span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 transition-transform duration-200 ease-out motion-reduce:transition-none",
+                expanded && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          {item.overviewHref ? (
+            <Link
+              href={item.overviewHref}
+              aria-label={t.nav.openGroupOverview(item.label)}
+              onClick={onNavigate}
+              className="mr-1 rounded-lg p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          ) : null}
+        </div>
+        <div
+          id={submenuId}
+          aria-hidden={!expanded}
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+            expanded
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-2">
+              {item.children.map((child) => {
+                const ChildIcon = child.icon;
+                const childIsActive = isActivePath(pathname, child.href);
+
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={onNavigate}
+                    aria-current={childIsActive ? "page" : undefined}
+                    tabIndex={expanded ? 0 : -1}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition",
+                      childIsActive
+                        ? "bg-indigo-400/20 text-white"
+                        : "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                    )}
+                  >
+                    <ChildIcon
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>{child.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-6 bg-slate-900 px-4 py-5 text-slate-300">
@@ -55,28 +188,7 @@ export function SidebarNav({
             <p className="px-3 text-xs font-semibold tracking-wider text-slate-500 uppercase">
               {section.title}
             </p>
-            {section.items.map((item) => {
-              const active = isActivePath(pathname, item.href);
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
-                    active
-                      ? "bg-indigo-500 text-white shadow-sm"
-                      : "text-slate-300 hover:bg-white/5 hover:text-white",
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" />
-                  {item.label}
-                </Link>
-              );
-            })}
+            {section.items.map(renderItem)}
           </div>
         ))}
       </nav>

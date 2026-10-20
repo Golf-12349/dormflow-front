@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 
 import { ApiError, apiRequest } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
@@ -83,6 +84,7 @@ export async function createStaffAction(
       body: { firstName, lastName, email, password, phone },
     });
   } catch (error) {
+    unstable_rethrow(error);
     return actionError(error);
   }
 
@@ -91,7 +93,8 @@ export async function createStaffAction(
       method: "POST",
       body: { roles: [role] },
     });
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error);
     revalidatePath("/settings");
     return { status: "error", message: t.settings.staff.partialRoleFailure };
   }
@@ -122,6 +125,7 @@ export async function assignStaffRolesAction(
     revalidatePath("/settings");
     return { status: "success", message: t.settings.staff.updateSuccess };
   } catch (error) {
+    unstable_rethrow(error);
     return actionError(error);
   }
 }
@@ -148,6 +152,7 @@ export async function updateStaffProfileAction(
     revalidatePath("/settings");
     return { status: "success", message: t.settings.staff.updateSuccess };
   } catch (error) {
+    unstable_rethrow(error);
     return actionError(error);
   }
 }
@@ -174,6 +179,7 @@ export async function changeStaffStatusAction(
     revalidatePath("/settings");
     return { status: "success", message: t.settings.staff.statusSuccess };
   } catch (error) {
+    unstable_rethrow(error);
     return actionError(error);
   }
 }

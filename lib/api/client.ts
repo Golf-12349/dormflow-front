@@ -30,6 +30,7 @@
  */
 
 import { getSessionTokens, saveSessionTokens } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 /** Default local backend; override it with `NEXT_PUBLIC_API_BASE_URL`. */
 const FALLBACK_API_BASE_URL = "http://localhost:8080/api/v1";
@@ -321,12 +322,13 @@ export async function apiRequest<T>(
   if (response.status === 401 && !path.includes(REFRESH_PATH)) {
     const accessToken = await refreshAccessToken();
 
-    if (accessToken) {
-      // Exactly one retry, with the token that replaced the expired one.
-      const retried = await sendRequest(path, options, accessToken);
-      if (retried.ok) return unwrapResponse<T>(retried);
-      throw await toApiError(retried);
-    }
+    if (!accessToken) redirect("/api/session-expired");
+
+    // Exactly one retry, with the token that replaced the expired one.
+    const retried = await sendRequest(path, options, accessToken);
+    if (retried.ok) return unwrapResponse<T>(retried);
+    if (retried.status === 401) redirect("/api/session-expired");
+    throw await toApiError(retried);
   }
 
   throw await toApiError(response);

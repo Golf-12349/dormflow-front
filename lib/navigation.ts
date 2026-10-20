@@ -1,11 +1,19 @@
 import type { ComponentType } from "react";
 import {
-  ClipboardList,
+  BedDouble,
+  Building2,
+  CalendarDays,
   DoorOpen,
+  FileText,
+  Home,
+  Landmark,
+  Layers,
   LayoutDashboard,
   Receipt,
   Settings,
+  UserRound,
   Users,
+  Warehouse,
 } from "lucide-react";
 
 import { t } from "@/lib/i18n";
@@ -29,11 +37,60 @@ export interface NavItem {
   icon: NavIcon;
   /** Shown under the page title in the topbar. */
   description: string;
+  children?: NavItem[];
+  overviewHref?: string;
 }
 
 export interface NavSection {
   title: string;
   items: NavItem[];
+}
+
+const PROPERTY_MODULE_ICONS: Record<string, NavIcon> = {
+  organizations: Landmark,
+  dormitories: Home,
+  buildings: Warehouse,
+  floors: Layers,
+  "room-types": BedDouble,
+  rooms: DoorOpen,
+};
+
+const RESIDENT_MODULE_ICONS: Record<string, NavIcon> = {
+  tenants: UserRound,
+  contracts: FileText,
+  reservations: CalendarDays,
+};
+
+function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
+  const href = `/management/${group.slug}`;
+  const item: NavItem = {
+    label: group.title,
+    href,
+    icon: group.icon,
+    description: group.description,
+  };
+
+  if (group.slug === "properties") {
+    item.overviewHref = href;
+    item.children = group.modules.map((module) => ({
+      label: module.title,
+      href: module.href ?? `${href}/${module.slug}`,
+      icon: PROPERTY_MODULE_ICONS[module.slug] ?? Building2,
+      description: module.description,
+    }));
+  }
+
+  if (group.slug === "residents") {
+    item.overviewHref = href;
+    item.children = group.modules.map((module) => ({
+      label: module.title,
+      href: module.href ?? `${href}/${module.slug}`,
+      icon: RESIDENT_MODULE_ICONS[module.slug] ?? Users,
+      description: module.description,
+    }));
+  }
+
+  return item;
 }
 
 export const NAV_SECTIONS: NavSection[] = [
@@ -58,12 +115,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Users,
         description: t.nav.tenantsDescription,
       },
-      ...MANAGEMENT_GROUPS.map((group) => ({
-        label: group.title,
-        href: `/management/${group.slug}`,
-        icon: group.icon ?? ClipboardList,
-        description: group.description,
-      })),
+      ...MANAGEMENT_GROUPS.map(managementNavItem),
     ],
   },
   {
@@ -85,8 +137,8 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap(
-  (section) => section.items,
+export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((section) =>
+  section.items.flatMap((item) => [...(item.children ?? []), item]),
 );
 
 /** True for the item's own route and any nested route beneath it. */

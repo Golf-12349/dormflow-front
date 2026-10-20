@@ -27,7 +27,7 @@ const INITIAL_LOGIN_STATE: LoginFormState = {
 const FIELD_BASE =
   "w-full rounded-xl border bg-white py-2.5 pr-3 pl-9 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400";
 
-export function LoginForm() {
+export function LoginForm({ notice }: { notice?: string }) {
   const [state, formAction, isPending] = useActionState(
     loginAction,
     INITIAL_LOGIN_STATE,
@@ -39,6 +39,14 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
+      {notice ? (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+        >
+          {notice}
+        </div>
+      ) : null}
       <ActionResultToast state={state} />
       {state.status === "error" && state.message ? (
         <div
