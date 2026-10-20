@@ -1,9 +1,12 @@
 import type { ComponentType } from "react";
 import {
   BedDouble,
+  BellRing,
   Building2,
+  CarFront,
   CalendarDays,
   ChartNoAxesCombined,
+  ContactRound,
   CreditCard,
   DoorOpen,
   FileText,
@@ -12,6 +15,8 @@ import {
   Landmark,
   Layers,
   LayoutDashboard,
+  Megaphone,
+  Package,
   PiggyBank,
   Receipt,
   Settings,
@@ -19,6 +24,7 @@ import {
   Users,
   Wallet,
   Warehouse,
+  Wrench,
 } from "lucide-react";
 
 import { t } from "@/lib/i18n";
@@ -76,6 +82,15 @@ const FINANCE_MODULE_ICONS: Record<string, NavIcon> = {
   reports: ChartNoAxesCombined,
 };
 
+const SERVICE_MODULE_ICONS: Record<string, NavIcon> = {
+  "maintenance-requests": Wrench,
+  parcels: Package,
+  visitors: ContactRound,
+  parking: CarFront,
+  announcements: Megaphone,
+  notifications: BellRing,
+};
+
 function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
   const href = `/management/${group.slug}`;
   const item: NavItem = {
@@ -111,6 +126,16 @@ function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
       label: module.title,
       href: module.href ?? `${href}/${module.slug}`,
       icon: FINANCE_MODULE_ICONS[module.slug] ?? Receipt,
+      description: module.description,
+    }));
+  }
+
+  if (group.slug === "services") {
+    item.overviewHref = href;
+    item.children = group.modules.map((module) => ({
+      label: module.title,
+      href: module.href ?? `${href}/${module.slug}`,
+      icon: SERVICE_MODULE_ICONS[module.slug] ?? Wrench,
       description: module.description,
     }));
   }
