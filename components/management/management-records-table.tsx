@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Database, ExternalLink } from "lucide-react";
+import { ArrowLeft, Database } from "lucide-react";
 
 import type { ManagementGroup, ManagementModule } from "@/lib/management";
 import type { ManagementRecords } from "@/lib/api/management";
@@ -41,6 +41,17 @@ function displayValue(value: unknown): string {
   return String(value);
 }
 
+function isInternalField(key: string, items: Record<string, unknown>[]): boolean {
+  if (["id", "createdAt", "updatedAt"].includes(key)) return true;
+  return items.some((item) => {
+    const value = item[key];
+    return (
+      typeof value === "string" &&
+      /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/iu.test(value)
+    );
+  });
+}
+
 export function ManagementRecordsTable({
   group,
   module,
@@ -62,12 +73,16 @@ export function ManagementRecordsTable({
   const periodFrom = reportPeriod?.periodFrom || reportFromDefault;
   const periodTo = reportPeriod?.periodTo || reportToDefault;
   const outstandingColumns = relatedRecords
-    ? [...new Set(relatedRecords.items.flatMap((item) => Object.keys(item)))].slice(0, 7)
+    ? [...new Set(relatedRecords.items.flatMap((item) => Object.keys(item)))]
+        .filter((key) => !isInternalField(key, relatedRecords.items))
+        .slice(0, 7)
     : [];
   const keys = [...new Set(records.items.flatMap((item) => Object.keys(item)))]
-    .filter((key) => !["id", "createdAt", "updatedAt"].includes(key))
+    .filter((key) => !isInternalField(key, records.items))
     .slice(0, 7);
-  const columns = keys.length > 0 ? keys : Object.keys(records.items[0] ?? {}).slice(0, 7);
+  const columns = keys.length > 0 ? keys : Object.keys(records.items[0] ?? {})
+    .filter((key) => !isInternalField(key, records.items))
+    .slice(0, 7);
 
   return (
     <section className="space-y-4">
@@ -165,17 +180,14 @@ export function ManagementRecordsTable({
                       {labelFor(key)}
                     </th>
                   ))}
-                  <th scope="col" className="px-3 py-2.5">
-                    {t.management.table.reference}
-                  </th>
                   {operations.length > 0 || MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
-                    <th scope="col" className="px-3 py-2.5">
+                    <th scope="col" className="whitespace-nowrap px-3 py-2.5">
                       {t.management.workflows.actions}
                     </th>
                   ) : null}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                 {records.items.map((item, index) => {
                   const recordId =
                     typeof item.id === "string" || typeof item.id === "number"
@@ -190,25 +202,10 @@ export function ManagementRecordsTable({
                           </span>
                         </td>
                       ))}
-                      <td className="px-3 py-2.5">
-                        {recordId ? (
-                          <span
-                            className="inline-flex max-w-32 items-center gap-1.5 truncate font-mono text-xs text-slate-400"
-                            title={recordId}
-                          >
-                            <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
-                            {recordId.length > 16
-                              ? `${recordId.slice(0, 8)}…${recordId.slice(-4)}`
-                              : recordId}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
                       {operations.length > 0 || MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
-                        <td className="max-w-80 px-3 py-2.5 align-middle">
+                        <td className="whitespace-nowrap px-3 py-2.5 align-middle">
                           {recordId ? (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-nowrap items-center gap-1.5">
                               {MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
                                 <ManagementWorkflowForm
                                   compact
