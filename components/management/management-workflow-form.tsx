@@ -108,7 +108,7 @@ export function ManagementWorkflowForm({
               aria-haspopup="dialog"
               aria-expanded={isOpen}
               onClick={() => setIsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
             >
               <Plus className="size-4" aria-hidden="true" />
               {submitLabel}

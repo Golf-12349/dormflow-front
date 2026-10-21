@@ -91,37 +91,56 @@ export function ManagementRecordsTable({
         </p>
       </header>
 
-      {createFields || module.slug === "reports" ? (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {createFields ? (
-            <ManagementWorkflowForm
-              resource={module.slug}
-              operation="create"
-              fields={createFields}
-              submitLabel={t.management.workflows.create}
-              title={t.management.workflows.formTitle}
-            />
-          ) : null}
-          {module.slug === "reports" ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-slate-900">{t.management.workflows.filter}</h3>
-              <form method="get" action={`/management/${group.slug}/${module.slug}`} className="mb-5 flex flex-wrap items-end gap-3">
-                <label className="text-sm text-slate-700">
-                  {t.management.workflows.reportFrom}
-                  <input required name="periodFrom" type="date" defaultValue={periodFrom} className="mt-1 block rounded-lg border border-slate-300 px-3 py-2" />
-                </label>
-                <label className="text-sm text-slate-700">
-                  {t.management.workflows.reportTo}
-                  <input required name="periodTo" type="date" defaultValue={periodTo} className="mt-1 block rounded-lg border border-slate-300 px-3 py-2" />
-                </label>
-                <button className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">
-                  {t.management.workflows.filter}
-                </button>
-              </form>
-              <h3 className="mb-3 text-base font-semibold text-slate-900">{t.management.workflows.export}</h3>
-              <ManagementReportExportForm periodFrom={periodFrom} periodTo={periodTo} />
-            </div>
-          ) : null}
+      {createFields ? (
+        <ManagementWorkflowForm
+          resource={module.slug}
+          operation="create"
+          fields={createFields}
+          submitLabel={t.management.workflows.create}
+          title={t.management.workflows.formTitle}
+        />
+      ) : null}
+      {module.slug === "reports" ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-base font-semibold text-slate-900">
+            {t.management.workflows.filter}
+          </h3>
+          <form
+            method="get"
+            action={`/management/${group.slug}/${module.slug}`}
+            className="mb-5 flex flex-wrap items-end gap-3"
+          >
+            <label className="text-sm text-slate-700">
+              {t.management.workflows.reportFrom}
+              <input
+                required
+                name="periodFrom"
+                type="date"
+                defaultValue={periodFrom}
+                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              {t.management.workflows.reportTo}
+              <input
+                required
+                name="periodTo"
+                type="date"
+                defaultValue={periodTo}
+                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <button className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">
+              {t.management.workflows.filter}
+            </button>
+          </form>
+          <h3 className="mb-3 text-base font-semibold text-slate-900">
+            {t.management.workflows.export}
+          </h3>
+          <ManagementReportExportForm
+            periodFrom={periodFrom}
+            periodTo={periodTo}
+          />
         </div>
       ) : null}
 
