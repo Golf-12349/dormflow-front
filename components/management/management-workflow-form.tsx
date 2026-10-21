@@ -78,7 +78,6 @@ export function ManagementWorkflowForm({
   compact?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(managementAction, initialState);
-  const [expanded, setExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -99,19 +98,22 @@ export function ManagementWorkflowForm({
   }, [isOpen]);
 
   return (
-    <div className={compact ? "min-w-56" : ""}>
-      {!compact && operation === "create" ? (
+    <div className={compact ? "inline-flex" : ""}>
+      {(!compact && operation === "create") ||
+      (compact && (operation === "update" || fields.length > 0)) ? (
         <>
-          <div className="flex justify-end">
+          <div className={compact ? "inline-flex" : "flex justify-end"}>
             <button
               type="button"
               aria-haspopup="dialog"
               aria-expanded={isOpen}
               onClick={() => setIsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+              className={compact
+                ? "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                : "inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"}
             >
-              <Plus className="size-4" aria-hidden="true" />
-              {submitLabel}
+              {!compact ? <Plus className="size-4" aria-hidden="true" /> : null}
+              {compact && operation === "update" ? t.management.workflows.edit : submitLabel}
             </button>
           </div>
           {isOpen ? (
@@ -130,14 +132,14 @@ export function ManagementWorkflowForm({
               <section
                 ref={dialogRef}
                 tabIndex={-1}
-                className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl outline-none sm:p-6"
+                className={`relative z-10 max-h-[90vh] w-full ${compact ? "max-w-xl" : "max-w-3xl"} overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl outline-none sm:p-6`}
               >
                 <header className="mb-5 flex items-start justify-between gap-4">
                   <div>
                     <h2 id={titleId} className="text-lg font-semibold text-slate-900">
-                      {title ?? submitLabel}
+                      {title ?? (operation === "update" ? t.management.workflows.edit : submitLabel)}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">{submitLabel}</p>
+                    {!compact ? <p className="mt-1 text-sm text-slate-500">{submitLabel}</p> : null}
                   </div>
                   <button
                     type="button"
@@ -171,7 +173,7 @@ export function ManagementWorkflowForm({
                       disabled={pending}
                       className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60"
                     >
-                      {pending ? t.common.loading : submitLabel}
+                      {pending ? t.common.loading : operation === "update" ? t.management.workflows.update : submitLabel}
                     </button>
                   </div>
                   {state.message ? (
@@ -185,39 +187,32 @@ export function ManagementWorkflowForm({
           ) : null}
         </>
       ) : null}
-      {compact && title ? <h3 className="mb-3 text-base font-semibold text-slate-900">{title}</h3> : null}
-      {compact && operation === "update" ? (
-        <button type="button" className="text-xs font-semibold text-indigo-700 hover:text-indigo-900" onClick={() => setExpanded(!expanded)}>
-          {expanded ? t.common.close : t.management.workflows.edit}
-        </button>
-      ) : null}
-      {(compact && operation !== "update") || (compact && expanded) ? (
-        <form
-          action={formAction}
-          className={compact ? "mt-3 space-y-2" : "space-y-4"}
-          onSubmit={(event) => {
-            if (operation === "delete" && !window.confirm(t.management.workflows.confirmDelete)) event.preventDefault();
-          }}
-        >
-          <input type="hidden" name="resource" value={resource} />
-          <input type="hidden" name="operation" value={operation} />
-          {recordId ? <input type="hidden" name="recordId" value={recordId} /> : null}
-          <div className={compact ? "space-y-2" : "grid gap-4 sm:grid-cols-2"}>
-            {fields.map((field) => <InputField key={field.name} field={field} value={values?.[field.name]} />)}
-          </div>
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60"
+      {compact && fields.length === 0 && operation !== "update" ? (
+        <div>
+          <form
+            action={formAction}
+            className="inline-flex"
+            onSubmit={(event) => {
+              if (operation === "delete" && !window.confirm(t.management.workflows.confirmDelete)) event.preventDefault();
+            }}
           >
-            {pending ? t.common.loading : submitLabel}
-          </button>
+            <input type="hidden" name="resource" value={resource} />
+            <input type="hidden" name="operation" value={operation} />
+            {recordId ? <input type="hidden" name="recordId" value={recordId} /> : null}
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              {pending ? t.common.loading : submitLabel}
+            </button>
+          </form>
           {state.message ? (
-            <p role={state.status === "error" ? "alert" : "status"} className={state.status === "error" ? "text-sm text-rose-700" : "text-sm text-emerald-700"}>
+            <p role={state.status === "error" ? "alert" : "status"} className="mt-1 text-xs text-slate-600">
               {state.message}
             </p>
           ) : null}
-        </form>
+        </div>
       ) : null}
     </div>
   );

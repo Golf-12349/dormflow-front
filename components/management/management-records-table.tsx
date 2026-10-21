@@ -70,7 +70,7 @@ export function ManagementRecordsTable({
   const columns = keys.length > 0 ? keys : Object.keys(records.items[0] ?? {}).slice(0, 7);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <Link
         href={`/management/${group.slug}`}
         className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-indigo-600"
@@ -81,12 +81,12 @@ export function ManagementRecordsTable({
 
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl leading-snug font-semibold tracking-tight text-slate-900">
+          <h2 className="text-xl leading-snug font-semibold tracking-tight text-slate-900">
             {module.title}
           </h2>
           <p className="max-w-2xl text-sm text-slate-500">{module.description}</p>
         </div>
-        <p className="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700">
+        <p className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
           {t.management.table.itemCount(records.totalCount.toLocaleString())}
         </p>
       </header>
@@ -145,9 +145,9 @@ export function ManagementRecordsTable({
       ) : null}
 
       {records.items.length === 0 ? (
-        <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center">
-          <Database className="size-8 text-slate-300" aria-hidden="true" />
-          <p className="mt-3 text-sm font-semibold text-slate-800">
+        <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-5 text-center">
+          <Database className="size-6 text-slate-300" aria-hidden="true" />
+          <p className="mt-2 text-sm font-semibold text-slate-800">
             {t.management.table.emptyTitle}
           </p>
           <p className="mt-1 max-w-md text-sm text-slate-500">
@@ -161,13 +161,17 @@ export function ManagementRecordsTable({
               <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                 <tr>
                   {columns.map((key) => (
-                    <th key={key} scope="col" className="whitespace-nowrap px-4 py-3">
+                    <th key={key} scope="col" className="whitespace-nowrap px-3 py-2.5">
                       {labelFor(key)}
                     </th>
                   ))}
-                  <th scope="col" className="px-4 py-3">{t.management.table.reference}</th>
+                  <th scope="col" className="px-3 py-2.5">
+                    {t.management.table.reference}
+                  </th>
                   {operations.length > 0 || MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
-                  <th scope="col" className="px-4 py-3">{t.management.workflows.actions}</th>
+                    <th scope="col" className="px-3 py-2.5">
+                      {t.management.workflows.actions}
+                    </th>
                   ) : null}
                 </tr>
               </thead>
@@ -180,24 +184,29 @@ export function ManagementRecordsTable({
                   return (
                     <tr key={recordId || index} className="transition hover:bg-slate-50/70">
                       {columns.map((key) => (
-                        <td key={key} className="max-w-72 px-4 py-3 text-slate-700">
+                        <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">
                           <span className="block truncate" title={displayValue(item[key])}>
                             {displayValue(item[key])}
                           </span>
                         </td>
                       ))}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {recordId ? (
-                          <span className="inline-flex max-w-44 items-center gap-1.5 truncate font-mono text-xs text-slate-400" title={recordId}>
+                          <span
+                            className="inline-flex max-w-32 items-center gap-1.5 truncate font-mono text-xs text-slate-400"
+                            title={recordId}
+                          >
                             <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
-                            {recordId}
+                            {recordId.length > 16
+                              ? `${recordId.slice(0, 8)}…${recordId.slice(-4)}`
+                              : recordId}
                           </span>
                         ) : (
                           <span className="text-slate-300">—</span>
                         )}
                       </td>
                       {operations.length > 0 || MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
-                        <td className="max-w-80 px-4 py-3 align-top">
+                        <td className="max-w-80 px-3 py-2.5 align-middle">
                           {recordId ? (
                             <div className="flex flex-wrap gap-2">
                               {MANAGEMENT_UPDATE_FIELDS[module.slug] ? (
@@ -214,19 +223,32 @@ export function ManagementRecordsTable({
                               {operations.map((operation) => {
                                 let fields = managementFieldList(module.slug, operation);
                                 if (operation === "status" && module.slug === "maintenance-requests") {
-                                  fields = [{
-                                    name: "status",
-                                    type: "select",
-                                    required: true,
-                                    options: ["Reported", "Assigned", "InProgress", "Completed", "Cancelled"],
-                                  } satisfies ManagementField];
+                                  fields = [
+                                    {
+                                      name: "status",
+                                      type: "select",
+                                      required: true,
+                                      options: [
+                                        "Reported",
+                                        "Assigned",
+                                        "InProgress",
+                                        "Completed",
+                                        "Cancelled",
+                                      ],
+                                    } satisfies ManagementField,
+                                  ];
                                 } else if (operation === "status") {
-                                  fields = [{
-                                    name: "status",
-                                    type: "select",
-                                    required: true,
-                                    options: module.slug === "organizations" ? ["Active", "Inactive", "Suspended"] : ["Active", "Inactive"],
-                                  } satisfies ManagementField];
+                                  fields = [
+                                    {
+                                      name: "status",
+                                      type: "select",
+                                      required: true,
+                                      options:
+                                        module.slug === "organizations"
+                                          ? ["Active", "Inactive", "Suspended"]
+                                          : ["Active", "Inactive"],
+                                    } satisfies ManagementField,
+                                  ];
                                 } else if (operation === "refund" && module.slug === "deposits") {
                                   fields = fields.map((field) => field.name === "refundAmount" ? { ...field, required: true } : field);
                                 }
@@ -253,7 +275,7 @@ export function ManagementRecordsTable({
             </table>
           </div>
           {records.totalCount > records.items.length ? (
-            <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+            <p className="border-t border-slate-100 px-3 py-2.5 text-xs text-slate-500">
               {t.management.table.showing(
                 records.items.length.toLocaleString(),
                 records.totalCount.toLocaleString(),
@@ -263,15 +285,15 @@ export function ManagementRecordsTable({
         </div>
       )}
       {relatedRecords ? (
-        <section className="space-y-3">
+        <section className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-slate-900">{t.management.modules.invoices.title}</h3>
-            <span className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800">
+            <h3 className="text-base font-semibold text-slate-900">{t.management.modules.invoices.title}</h3>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
               {t.management.table.itemCount(relatedRecords.totalCount.toLocaleString())}
             </span>
           </div>
           {relatedRecords.items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
               {t.management.table.emptyTitle}
             </div>
           ) : (
@@ -280,7 +302,7 @@ export function ManagementRecordsTable({
                 <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                   <tr>
                     {outstandingColumns.map((key) => (
-                      <th key={key} scope="col" className="whitespace-nowrap px-4 py-3">{labelFor(key)}</th>
+                      <th key={key} scope="col" className="whitespace-nowrap px-3 py-2.5">{labelFor(key)}</th>
                     ))}
                   </tr>
                 </thead>
@@ -288,7 +310,7 @@ export function ManagementRecordsTable({
                   {relatedRecords.items.map((item, index) => {
                     return (
                       <tr key={String(item.id ?? index)}>
-                        {outstandingColumns.map((key) => <td key={key} className="max-w-72 px-4 py-3 text-slate-700">{displayValue(item[key])}</td>)}
+                        {outstandingColumns.map((key) => <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">{displayValue(item[key])}</td>)}
                       </tr>
                     );
                   })}
