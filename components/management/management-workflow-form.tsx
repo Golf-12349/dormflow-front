@@ -102,16 +102,18 @@ export function ManagementWorkflowForm({
     <div className={compact ? "min-w-56" : ""}>
       {!compact && operation === "create" ? (
         <>
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={isOpen}
-            onClick={() => setIsOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            {submitLabel}
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={isOpen}
+              onClick={() => setIsOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              {submitLabel}
+            </button>
+          </div>
           {isOpen ? (
             <div
               role="dialog"
