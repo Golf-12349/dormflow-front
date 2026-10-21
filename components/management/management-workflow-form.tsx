@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
 
 import { exportManagementReportAction, managementAction, type ManagementActionState } from "@/lib/actions/management";
 import type { ManagementField } from "@/lib/management-workflows";
@@ -78,16 +79,117 @@ export function ManagementWorkflowForm({
 }) {
   const [state, formAction, pending] = useActionState(managementAction, initialState);
   const [expanded, setExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const titleId = useId();
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   return (
-    <div className={compact ? "min-w-56" : "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"}>
-      {title ? <h3 className="mb-3 text-base font-semibold text-slate-900">{title}</h3> : null}
+    <div className={compact ? "min-w-56" : ""}>
+      {!compact && operation === "create" ? (
+        <>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            {submitLabel}
+          </button>
+          {isOpen ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <button
+                type="button"
+                aria-label={t.common.close}
+                onClick={() => setIsOpen(false)}
+                className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+              />
+              <section
+                ref={dialogRef}
+                tabIndex={-1}
+                className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl outline-none sm:p-6"
+              >
+                <header className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+                      {title ?? submitLabel}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">{submitLabel}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    aria-label={t.common.close}
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    <X className="size-5" aria-hidden="true" />
+                  </button>
+                </header>
+                <form
+                  action={formAction}
+                  className="space-y-5"
+                >
+                  <input type="hidden" name="resource" value={resource} />
+                  <input type="hidden" name="operation" value={operation} />
+                  {recordId ? <input type="hidden" name="recordId" value={recordId} /> : null}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {fields.map((field) => <InputField key={field.name} field={field} value={values?.[field.name]} />)}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+                    >
+                      {t.common.close}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {pending ? t.common.loading : submitLabel}
+                    </button>
+                  </div>
+                  {state.message ? (
+                    <p role={state.status === "error" ? "alert" : "status"} className={state.status === "error" ? "text-sm text-rose-700" : "text-sm text-emerald-700"}>
+                      {state.message}
+                    </p>
+                  ) : null}
+                </form>
+              </section>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {compact && title ? <h3 className="mb-3 text-base font-semibold text-slate-900">{title}</h3> : null}
       {compact && operation === "update" ? (
         <button type="button" className="text-xs font-semibold text-indigo-700 hover:text-indigo-900" onClick={() => setExpanded(!expanded)}>
           {expanded ? t.common.close : t.management.workflows.edit}
         </button>
       ) : null}
-      {(!compact || operation !== "update" || expanded) ? (
+      {(compact && operation !== "update") || (compact && expanded) ? (
         <form
           action={formAction}
           className={compact ? "mt-3 space-y-2" : "space-y-4"}

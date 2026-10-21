@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, UserPlus } from "lucide-react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, Loader2, UserPlus, X } from "lucide-react";
 
 import { createTenantAction } from "@/lib/actions/tenants";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -27,10 +27,8 @@ interface AddTenantFormProps {
 }
 
 /**
- * 6.5 — "add tenant": trigger button plus an expandable form rendered above
- * the table. Every field is re-validated by `createTenantAction` on the
- * server; the UI follows the Rooms 5.7 pattern (pending state + inline
- * `role="status"` aria-live result message).
+ * 6.5 — "add tenant": trigger button opens a modal form above the table.
+ * Every field is re-validated by `createTenantAction` on the server.
  *
  * The panel stays open after a result so errors remain readable; collapsing
  * it unmounts the uncontrolled inputs, which clears the form.
@@ -41,6 +39,23 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
     createTenantAction,
     INITIAL_ADD_STATE,
   );
+  const titleId = useId();
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   return (
     <div>
@@ -50,7 +65,7 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
           type="button"
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
-          aria-controls="add-tenant-form"
+          aria-haspopup="dialog"
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
         >
           <UserPlus className="size-4" aria-hidden="true" />
@@ -60,14 +75,37 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
 
       {isOpen ? (
         <div
-          id="add-tenant-form"
-          className="mt-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
-          <h3 className="text-sm font-semibold text-slate-900">
-            {t.tenants.add.title}
-          </h3>
+          <button
+            type="button"
+            aria-label={t.common.close}
+            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+          />
+          <section
+            ref={dialogRef}
+            tabIndex={-1}
+            className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl outline-none sm:p-6"
+          >
+            <header className="mb-5 flex items-start justify-between gap-4">
+              <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+                {t.tenants.add.title}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                aria-label={t.common.close}
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </header>
 
-          <form action={formAction} className="mt-4 space-y-5" noValidate>
+          <form action={formAction} className="space-y-5" noValidate>
             {state.status !== "idle" && state.message ? (
               <div
                 role="status"
@@ -162,7 +200,7 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -192,6 +230,7 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
               </button>
             </div>
           </form>
+          </section>
         </div>
       ) : null}
     </div>
