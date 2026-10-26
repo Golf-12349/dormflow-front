@@ -28,12 +28,12 @@ export const MANAGEMENT_CREATE_FIELDS: Record<string, ManagementField[]> = {
   reservations: [id("roomId"), id("tenantId"), date("moveInDate"), number("holdDays"), number("reservationFee"), text("notes")],
   payments: [id("invoiceId"), number("amount"), { name: "paymentDate", type: "datetime-local" }, choice("method", ["Cash", "BankTransfer", "QrCode", "Other"]), text("referenceNumber"), text("notes")],
   deposits: [id("contractId"), number("amount", false), text("notes")],
-  expenses: [id("dormitoryId"), text("maintenanceRequestId"), text("category", true), number("amount"), date("expenseDate"), text("description", true), text("paidTo"), text("notes")],
+  expenses: [id("dormitoryId"), text("maintenanceRequestId"), choice("category", ["Utilities", "Maintenance", "Salaries", "Supplies", "Marketing", "Other"]), number("amount"), date("expenseDate"), text("description", true), text("paidTo"), text("notes")],
   receipts: [id("paymentId"), text("notes")],
   "maintenance-requests": [id("roomId"), text("tenantId"), text("category"), text("title", true), text("description"), choice("priority", ["Low", "Medium", "High", "Urgent"])],
   parcels: [id("roomId"), text("tenantId"), text("courierName"), text("trackingNumber"), text("description"), text("notes")],
   visitors: [id("roomId"), text("tenantId"), text("visitorName", true), text("visitorPhone"), text("idNumber"), text("purpose"), text("notes")],
-  parking: [id("roomId"), id("tenantId"), text("licensePlate", true), text("vehicleType", true), text("brand"), text("color"), text("parkingSpotLabel"), text("notes")],
+  parking: [id("roomId"), id("tenantId"), text("licensePlate", true), choice("vehicleType", ["Car", "Motorcycle", "Other"]), text("brand"), text("color"), text("parkingSpotLabel"), text("notes")],
   announcements: [id("dormitoryId"), text("title", true), { name: "content", type: "textarea", required: true }, choice("priority", ["Low", "Normal", "High", "Urgent"]), { name: "expiresAt", type: "datetime-local" }, text("targetRoles"), text("notes")],
   notifications: [id("recipientUserId"), text("title", true), { name: "message", type: "textarea", required: true }],
   users: [{ name: "email", type: "email", required: true }, { name: "password", type: "password", required: true }, text("firstName", true), text("lastName", true), text("phone"), text("organizationId")],
@@ -67,7 +67,7 @@ export const MANAGEMENT_OPERATIONS: Record<string, string[]> = {
   parking: ["release"],
   announcements: ["publish", "archive", "cancel"],
   notifications: ["read"],
-  users: ["status", "roles"],
+  users: ["status", "roles", "dormitories"],
   roles: ["permissions", "delete"],
 };
 
@@ -81,6 +81,7 @@ export const MANAGEMENT_OPERATION_FIELDS: Record<string, ManagementField[]> = {
   assign: [id("technicianId")],
   pickup: [text("pickedUpByName")],
   roles: [{ name: "roles", type: "textarea", required: true }],
+  dormitories: [id("dormitoryId")],
   permissions: [{ name: "permissions", type: "textarea", required: true }],
 };
 

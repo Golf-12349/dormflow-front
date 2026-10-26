@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertCircle, CheckCircle2, Printer } from "lucide-react";
+import { AlertCircle, CheckCircle2, Printer, Receipt } from "lucide-react";
 
 import { recordInvoicePaymentAction } from "@/lib/actions/billing";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -27,8 +27,13 @@ const INITIAL_PAYMENT_STATE: InvoicePaymentFormState = {
   message: null,
 };
 
+type PrintDocumentType = "invoice" | "receipt";
+
 export function InvoiceList({ entries }: { entries: InvoiceListEntry[] }) {
-  const [printEntry, setPrintEntry] = useState<InvoiceListEntry | null>(null);
+  const [printState, setPrintState] = useState<{
+    entry: InvoiceListEntry;
+    docType: PrintDocumentType;
+  } | null>(null);
 
   return (
     <section aria-labelledby="invoice-list-title" className="mt-6 space-y-4">
@@ -84,17 +89,18 @@ export function InvoiceList({ entries }: { entries: InvoiceListEntry[] }) {
                 <InvoiceRow
                   key={entry.invoice.id}
                   entry={entry}
-                  onPrint={() => setPrintEntry(entry)}
+                  onPrint={(docType) => setPrintState({ entry, docType })}
                 />
               ))}
             </tbody>
           </table>
         </div>
       )}
-      {printEntry ? (
+      {printState ? (
         <InvoicePrintView
-          entry={printEntry}
-          onClose={() => setPrintEntry(null)}
+          entry={printState.entry}
+          initialDocType={printState.docType}
+          onClose={() => setPrintState(null)}
         />
       ) : null}
     </section>
@@ -106,7 +112,7 @@ function InvoiceRow({
   onPrint,
 }: {
   entry: InvoiceListEntry;
-  onPrint: () => void;
+  onPrint: (docType: PrintDocumentType) => void;
 }) {
   const { invoice, roomNumber, tenantName } = entry;
   const outstanding = Math.max(0, invoice.total - invoice.paidAmount);
@@ -166,15 +172,27 @@ function InvoiceRow({
           {INVOICE_STATUS_LABELS[invoice.status]}
         </span>
       </td>
-      <td className="min-w-56 px-4 py-3">
-        <button
-          type="button"
-          onClick={onPrint}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <Printer className="size-3.5" aria-hidden="true" />
-          {t.billing.invoice.list.print}
-        </button>
+      <td className="min-w-64 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onPrint("invoice")}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Printer className="size-3.5" aria-hidden="true" />
+            {t.billing.invoice.list.print}
+          </button>
+          {invoice.paidAmount > 0 ? (
+            <button
+              type="button"
+              onClick={() => onPrint("receipt")}
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              <Receipt className="size-3.5" aria-hidden="true" />
+              {t.billing.invoice.list.printReceipt}
+            </button>
+          ) : null}
+        </div>
         {outstanding > 0 ? (
           <form action={formAction} className="mt-2 space-y-1.5">
             <input type="hidden" name="invoiceId" value={invoice.id} />
@@ -184,7 +202,7 @@ function InvoiceRow({
             >
               {t.billing.invoice.payment.amount}
             </label>
-            <div className="flex items-start gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <input
                 id={`${invoice.id}-payment`}
                 name="paymentAmount"
@@ -192,6 +210,7 @@ function InvoiceRow({
                 min="0.01"
                 max={outstanding}
                 step="0.01"
+                defaultValue={outstanding}
                 inputMode="decimal"
                 required
                 aria-invalid={state.fieldErrors?.paymentAmount ? true : undefined}
@@ -201,6 +220,26 @@ function InvoiceRow({
                     : undefined
                 }
                 className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-indigo-400"
+              />
+              <select
+                name="paymentMethod"
+                defaultValue="Cash"
+                aria-label={t.billing.invoice.payment.method}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-indigo-400"
+              >
+                <option value="Cash">{t.billing.invoice.payment.methods.Cash}</option>
+                <option value="BankTransfer">{t.billing.invoice.payment.methods.BankTransfer}</option>
+                <option value="QrCode">{t.billing.invoice.payment.methods.QrCode}</option>
+                <option value="Other">{t.billing.invoice.payment.methods.Other}</option>
+              </select>
+            </div>
+            <div className="flex items-start gap-1.5">
+              <input
+                name="referenceNumber"
+                type="text"
+                placeholder={t.billing.invoice.payment.referenceNumber}
+                aria-label={t.billing.invoice.payment.referenceNumber}
+                className="w-36 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-900 outline-none focus:border-indigo-400"
               />
               <button
                 type="submit"
@@ -229,13 +268,17 @@ function InvoiceRow({
 
 function InvoicePrintView({
   entry,
+  initialDocType = "invoice",
   onClose,
 }: {
   entry: InvoiceListEntry;
+  initialDocType?: PrintDocumentType;
   onClose: () => void;
 }) {
   const { invoice, roomNumber, tenantName } = entry;
+  const [docType, setDocType] = useState<PrintDocumentType>(initialDocType);
   const outstanding = Math.max(0, invoice.total - invoice.paidAmount);
+  const isReceipt = docType === "receipt";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/40 p-4 print:bg-white print:p-0">
@@ -246,22 +289,56 @@ function InvoicePrintView({
         aria-labelledby="billing-print-title"
         className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl print:max-w-none print:rounded-none print:p-0 print:shadow-none"
       >
-        <div className="print-hidden mb-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            {t.billing.invoice.list.close}
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            {t.billing.invoice.list.printInvoice}
-          </button>
+        <div className="print-hidden mb-5 flex flex-wrap items-center justify-between gap-2">
+          {invoice.paidAmount > 0 ? (
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setDocType("invoice")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 font-medium transition",
+                  !isReceipt
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                {t.billing.invoice.list.printTitle}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocType("receipt")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 font-medium transition",
+                  isReceipt
+                    ? "bg-white text-emerald-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                {t.billing.invoice.list.receiptTitle}
+              </button>
+            </div>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {t.billing.invoice.list.close}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              {isReceipt
+                ? t.billing.invoice.list.printReceipt
+                : t.billing.invoice.list.printInvoice}
+            </button>
+          </div>
         </div>
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
@@ -270,7 +347,9 @@ function InvoicePrintView({
               id="billing-print-title"
               className="mt-2 text-xl font-semibold text-slate-900"
             >
-              {t.billing.invoice.list.printTitle}
+              {isReceipt
+                ? t.billing.invoice.list.receiptTitle
+                : t.billing.invoice.list.printTitle}
             </h2>
           </div>
           <p className="text-base font-semibold text-slate-900">
@@ -295,6 +374,10 @@ function InvoicePrintView({
             label={t.billing.invoice.list.period}
             value={formatPeriod(invoice.period)}
           />
+          <PrintDetail
+            label={t.billing.invoice.list.status}
+            value={INVOICE_STATUS_LABELS[invoice.status]}
+          />
         </dl>
         <div className="py-5">
           <h3 className="mb-3 text-sm font-semibold text-slate-900">
@@ -306,8 +389,12 @@ function InvoicePrintView({
             <PrintAmount label={t.billing.invoice.generate.waterFee} value={invoice.waterFee} />
             <PrintAmount label={t.billing.invoice.generate.otherFee} value={invoice.otherFee} />
             <PrintAmount label={t.billing.invoice.list.total} value={invoice.total} strong />
-            <PrintAmount label={t.billing.invoice.list.paid} value={invoice.paidAmount} />
-            <PrintAmount label={t.billing.invoice.list.outstanding} value={outstanding} strong />
+            <PrintAmount
+              label={t.billing.invoice.list.paid}
+              value={invoice.paidAmount}
+              strong={isReceipt}
+            />
+            <PrintAmount label={t.billing.invoice.list.outstanding} value={outstanding} strong={!isReceipt} />
           </dl>
         </div>
       </section>

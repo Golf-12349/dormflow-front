@@ -82,7 +82,7 @@ export async function createStaffAction(
     readField(formData, "organizationId") || session.user.organizationId,
   );
 
-  let user: { id: string };
+  let user: { id: string; organizationId?: string };
   try {
     const body: Record<string, unknown> = {
       firstName,
@@ -94,7 +94,7 @@ export async function createStaffAction(
     if (organizationId) {
       body.organizationId = organizationId;
     }
-    user = await apiRequest<{ id: string }>("/users", {
+    user = await apiRequest<{ id: string; organizationId?: string }>("/users", {
       method: "POST",
       body,
     });
@@ -112,6 +112,25 @@ export async function createStaffAction(
     unstable_rethrow(error);
     revalidatePath("/settings");
     return { status: "error", message: t.settings.staff.partialRoleFailure };
+  }
+
+  try {
+    const dormPage = await apiRequest<{ items?: Array<{ id: string; organizationId: string }> }>(
+      "/dormitories",
+      { query: { page: 1, pageSize: 50 }, cache: "no-store" },
+    );
+    const targetOrgId = user.organizationId ?? organizationId;
+    const matchingDorms = (dormPage?.items ?? []).filter(
+      (dorm) => !targetOrgId || dorm.organizationId === targetOrgId,
+    );
+    for (const [index, dorm] of matchingDorms.entries()) {
+      await apiRequest(`/users/${encodeURIComponent(user.id)}/dormitories`, {
+        method: "POST",
+        body: { dormitoryId: dorm.id, isPrimary: index === 0 },
+      });
+    }
+  } catch {
+    // Best-effort dormitory assignment so staff/technicians can access their dorms immediately.
   }
 
   revalidatePath("/settings");

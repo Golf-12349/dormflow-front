@@ -11,7 +11,7 @@
 import { revalidatePath } from "next/cache";
 
 import { t } from "@/lib/i18n";
-import { getRoomById, updateRoomStatus } from "@/lib/api/dormflow";
+import { createRoom, getRoomById, updateRoomStatus } from "@/lib/api/dormflow";
 import { ROOM_STATUS_LABELS } from "@/lib/utils";
 import type { RoomStatus, RoomStatusFormState } from "@/types";
 
@@ -62,6 +62,76 @@ function localizeDataLayerError(message: string): string {
   }
 
   return message;
+}
+
+export async function createRoomAction(
+  _prevState: RoomStatusFormState,
+  formData: FormData,
+): Promise<RoomStatusFormState> {
+  const buildingId = String(formData.get("buildingId") ?? "").trim();
+  const floorId = String(formData.get("floorId") ?? "").trim();
+  const roomTypeId = String(formData.get("roomTypeId") ?? "").trim();
+  const roomNumber = String(formData.get("roomNumber") ?? "").trim();
+  const rawMonthlyRent = String(formData.get("monthlyRent") ?? "").trim();
+  const rawDepositAmount = String(formData.get("depositAmount") ?? "").trim();
+  const rawMaximumOccupants = String(formData.get("maximumOccupants") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!buildingId) {
+    return { status: "error", message: t.rooms.errors.buildingRequired };
+  }
+  if (!floorId) {
+    return { status: "error", message: t.rooms.errors.floorRequired };
+  }
+  if (!roomTypeId) {
+    return { status: "error", message: t.rooms.errors.roomTypeRequired };
+  }
+  if (!roomNumber) {
+    return { status: "error", message: t.rooms.errors.roomNumberRequired };
+  }
+
+  const monthlyRent = rawMonthlyRent === "" ? Number.NaN : Number(rawMonthlyRent);
+  if (!Number.isFinite(monthlyRent) || monthlyRent < 0) {
+    return { status: "error", message: t.rooms.errors.invalidRent };
+  }
+
+  const depositAmount = rawDepositAmount === "" ? 0 : Number(rawDepositAmount);
+  if (!Number.isFinite(depositAmount) || depositAmount < 0) {
+    return { status: "error", message: t.rooms.errors.invalidDeposit };
+  }
+
+  const maximumOccupants =
+    rawMaximumOccupants === "" ? 1 : Math.floor(Number(rawMaximumOccupants));
+  if (!Number.isFinite(maximumOccupants) || maximumOccupants <= 0) {
+    return { status: "error", message: t.rooms.errors.invalidOccupants };
+  }
+
+  const result = await createRoom({
+    buildingId,
+    floorId,
+    roomTypeId,
+    roomNumber,
+    monthlyRent,
+    depositAmount,
+    maximumOccupants,
+    description,
+  });
+
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizeDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/rooms");
+  revalidatePath("/dashboard");
+  revalidatePath("/tenants");
+
+  return {
+    status: "success",
+    message: t.rooms.add.success(result.room.number),
+  };
 }
 
 export async function changeRoomStatusAction(

@@ -245,7 +245,13 @@ const LOOKUP_RESOLVERS: Record<
   },
   technicianId: async () => {
     const items = await fetchLookupItems("/users");
-    return items
+    const technicians = items.filter(
+      (item) =>
+        Array.isArray(item.roles) &&
+        item.roles.some((role) => String(role).toLowerCase() === "technician"),
+    );
+    const source = technicians.length > 0 ? technicians : items;
+    return source
       .filter((item) => str(item.id))
       .map((item) => {
         const name = `${str(item.firstName)} ${str(item.lastName)}`.trim();

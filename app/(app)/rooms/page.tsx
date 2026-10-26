@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
 import {
+  getRoomCreationOptions,
   getRooms,
   getTenants,
   getUtilityRates,
   getUtilityReadingsByRoom,
 } from "@/lib/api/dormflow";
 import type { Tenant, UtilityReading } from "@/types";
+import { AddRoomForm } from "./add-room-form";
 import { RoomInventoryView } from "./room-inventory-view";
 
 export const metadata: Metadata = {
@@ -23,10 +25,11 @@ export const metadata: Metadata = {
  * history and the utility rates — is fetched here and passed down as plain props.
  */
 export default async function RoomsPage() {
-  const [rooms, tenants, rates] = await Promise.all([
+  const [rooms, tenants, rates, roomCreationOptions] = await Promise.all([
     getRooms(),
     getTenants(),
     getUtilityRates(),
+    getRoomCreationOptions(),
   ]);
 
   /**
@@ -62,11 +65,14 @@ export default async function RoomsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl leading-snug font-semibold tracking-tight text-slate-900">
-          {t.nav.rooms}
-        </h2>
-        <p className="text-sm text-slate-500">{t.rooms.subtitle(rooms.length)}</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl leading-snug font-semibold tracking-tight text-slate-900">
+            {t.nav.rooms}
+          </h2>
+          <p className="text-sm text-slate-500">{t.rooms.subtitle(rooms.length)}</p>
+        </div>
+        <AddRoomForm options={roomCreationOptions} />
       </div>
 
       <RoomInventoryView

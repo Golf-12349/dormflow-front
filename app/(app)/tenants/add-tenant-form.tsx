@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, UserPlus, X } from "lucide-react";
 
 import { createTenantAction } from "@/lib/actions/tenants";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, formatUnitPrice } from "@/lib/utils";
 import type { AddTenantFormState, Room } from "@/types";
 import { TenantFormField } from "./tenant-form-field";
 
@@ -20,6 +20,17 @@ const INPUT_CLASSES =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition outline-none focus:border-indigo-400";
 const LEGEND_CLASSES =
   "px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase";
+
+function defaultLeaseDates(): { startDate: string; endDate: string } {
+  const start = new Date();
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  end.setDate(end.getDate() - 1);
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  };
+}
 
 interface AddTenantFormProps {
   /** Rooms with status "vacant", pre-filtered by the page — assignable options. */
@@ -40,12 +51,25 @@ export function AddTenantForm({
   organizations = [],
 }: AddTenantFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const defaultDates = useMemo(() => defaultLeaseDates(), []);
+  const [depositAmount, setDepositAmount] = useState("");
   const [state, formAction, isPending] = useActionState(
     createTenantAction,
     INITIAL_ADD_STATE,
   );
   const titleId = useId();
   const dialogRef = useRef<HTMLElement | null>(null);
+
+  function handleRoomChange(roomId: string) {
+    setSelectedRoomId(roomId);
+    const matched = vacantRooms.find((room) => room.id === roomId);
+    if (matched) {
+      setDepositAmount(String(matched.monthlyRate));
+    } else {
+      setDepositAmount("");
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -219,17 +243,69 @@ export function AddTenantForm({
                 <select
                   id="add-room"
                   name="roomId"
-                  defaultValue=""
+                  value={selectedRoomId}
+                  onChange={(event) => handleRoomChange(event.target.value)}
                   className={INPUT_CLASSES}
                 >
                   <option value="">{t.tenants.noRoom}</option>
                   {vacantRooms.map((room) => (
                     <option key={room.id} value={room.id}>
-                      {t.rooms.roomTitle(room.number)}
+                      {t.rooms.roomTitle(room.number)} ({formatUnitPrice(room.monthlyRate)} {t.rooms.fields.perMonth})
                     </option>
                   ))}
                 </select>
               </div>
+
+              {selectedRoomId ? (
+                <fieldset className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+                  <legend className={LEGEND_CLASSES}>
+                    {t.tenants.add.leaseSection}
+                  </legend>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="add-lease-start" className={LABEL_CLASSES}>
+                        {t.tenants.add.startDate}
+                      </label>
+                      <input
+                        id="add-lease-start"
+                        name="startDate"
+                        type="date"
+                        defaultValue={defaultDates.startDate}
+                        required
+                        className={INPUT_CLASSES}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="add-lease-end" className={LABEL_CLASSES}>
+                        {t.tenants.add.endDate}
+                      </label>
+                      <input
+                        id="add-lease-end"
+                        name="endDate"
+                        type="date"
+                        defaultValue={defaultDates.endDate}
+                        required
+                        className={INPUT_CLASSES}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="add-lease-deposit" className={LABEL_CLASSES}>
+                        {t.tenants.add.depositAmount}
+                      </label>
+                      <input
+                        id="add-lease-deposit"
+                        name="depositAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={depositAmount}
+                        onChange={(event) => setDepositAmount(event.target.value)}
+                        className={INPUT_CLASSES}
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+              ) : null}
 
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
                 <button

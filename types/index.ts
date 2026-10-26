@@ -265,6 +265,10 @@ export interface DashboardMetrics {
   outstandingBalance: number;
   unpaidInvoices: number;
   openMaintenanceIssues: number;
+  parcelsAwaitingPickup?: number;
+  activeVisitorsCount?: number;
+  expiringReservationsCount?: number;
+  pendingPaymentConfirmations?: number;
 }
 
 export interface RevenuePoint {

@@ -408,6 +408,12 @@ export async function recordInvoicePaymentAction(
 
   const invoiceId = readField(formData, "invoiceId");
   const rawAmount = readField(formData, "paymentAmount");
+  const rawMethod = readField(formData, "paymentMethod");
+  const referenceNumber = readField(formData, "referenceNumber") || null;
+  const method: "Cash" | "BankTransfer" | "QrCode" | "Other" =
+    rawMethod === "BankTransfer" || rawMethod === "QrCode" || rawMethod === "Other"
+      ? rawMethod
+      : "Cash";
   const amount = rawAmount ? Number(rawAmount) : Number.NaN;
   if (!Number.isFinite(amount) || amount <= 0) {
     return {
@@ -437,7 +443,12 @@ export async function recordInvoicePaymentAction(
     };
   }
 
-  const result = await recordInvoicePayment(invoiceId, amount);
+  const result = await recordInvoicePayment(
+    invoiceId,
+    amount,
+    method,
+    referenceNumber,
+  );
   if (!result.success) {
     return {
       status: "error",

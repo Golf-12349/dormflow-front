@@ -104,6 +104,11 @@ export async function createTenantAction(
   const emergencyPhone = readField(formData, "emergencyPhone");
   const roomId = readField(formData, "roomId") || null;
   const organizationId = readField(formData, "organizationId") || null;
+  const startDate = readField(formData, "startDate") || null;
+  const endDate = readField(formData, "endDate") || null;
+  const rawDepositAmount = readField(formData, "depositAmount");
+  const depositAmount =
+    rawDepositAmount === "" ? null : Number(rawDepositAmount);
 
   // Server-side validation — the form's `required` attributes are only a
   // convenience for the browser; nothing coming from the client is trusted.
@@ -165,6 +170,12 @@ export async function createTenantAction(
     },
     roomId,
     organizationId,
+    startDate,
+    endDate,
+    depositAmount:
+      depositAmount !== null && Number.isFinite(depositAmount) && depositAmount >= 0
+        ? depositAmount
+        : null,
   });
 
   if (!result.success) {

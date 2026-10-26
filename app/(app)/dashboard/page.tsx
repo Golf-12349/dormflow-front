@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   Banknote,
   BedDouble,
@@ -280,27 +281,6 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-/**
- * Phase 4 overview.
- *
- * 4.1 — the four counters, each with a trend delta against the previous billing
- * period. Current values keep coming from `getDashboardMetrics()` and the
- * previous period is derived with `shiftPeriod()`; `getRevenueTrend()` is the
- * only period-scoped history available here, so revenue is compared point
- * against point while room/tenant counts (a single current snapshot with no
- * month dimension) render a flat chip.
- * 4.2 — occupancy per floor (`getFloorOccupancy()`) as one stacked bar per floor
- * plus an occupancy-rate ring.
- * 4.3 — expected vs collected revenue for the last six periods as plain CSS
- * bars (no charting dependency).
- *
- * 4.4 — recent activity feed (`getRecentActivities()`) with one icon per
- * activity type and relative timestamps.
- * 4.5 — a single "needs action" list built from `getInvoices()`
- * (overdue/unpaid) and `getRooms()` (under maintenance).
- *
- * 4.6 (empty/loading states and accessible labels) is still to come.
- */
 export default async function DashboardPage() {
   const session = await verifySession();
 
@@ -704,7 +684,9 @@ export default async function DashboardPage() {
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between gap-3">
               <dt className="text-slate-500">
-                {t.dashboard.mockLayer.unpaidInvoices}
+                <Link href="/billing" className="hover:text-indigo-600 hover:underline">
+                  {t.dashboard.mockLayer.unpaidInvoices}
+                </Link>
               </dt>
               <dd className="font-medium text-slate-900">
                 {metrics.unpaidInvoices}
@@ -712,13 +694,70 @@ export default async function DashboardPage() {
             </div>
             <div className="flex items-center justify-between gap-3">
               <dt className="text-slate-500">
-                {t.dashboard.mockLayer.openMaintenance}
+                <Link
+                  href="/management/services/maintenance-requests"
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {t.dashboard.mockLayer.openMaintenance}
+                </Link>
               </dt>
               <dd className="font-medium text-slate-900">
                 {metrics.openMaintenanceIssues}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3">
+              <dt className="text-slate-500">
+                <Link
+                  href="/management/services/parcels"
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {t.dashboard.mockLayer.parcelsAwaitingPickup}
+                </Link>
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {metrics.parcelsAwaitingPickup ?? 0}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-slate-500">
+                <Link
+                  href="/management/services/visitors"
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {t.dashboard.mockLayer.activeVisitors}
+                </Link>
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {metrics.activeVisitorsCount ?? 0}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-slate-500">
+                <Link
+                  href="/management/residents/reservations"
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {t.dashboard.mockLayer.expiringReservations}
+                </Link>
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {metrics.expiringReservationsCount ?? 0}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-slate-500">
+                <Link
+                  href="/management/finance/payments"
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {t.dashboard.mockLayer.pendingPayments}
+                </Link>
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {metrics.pendingPaymentConfirmations ?? 0}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2">
               <dt className="text-slate-500">
                 {t.dashboard.mockLayer.signedInAs}
               </dt>

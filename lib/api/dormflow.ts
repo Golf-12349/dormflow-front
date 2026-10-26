@@ -38,6 +38,36 @@ export interface ApiOrganization {
   status?: string;
 }
 
+export interface ApiBuilding {
+  id: string;
+  dormitoryId: string;
+  code: string;
+  name: string;
+}
+
+export interface ApiFloor {
+  id: string;
+  buildingId: string;
+  floorNumber: number;
+  name: string;
+}
+
+export interface ApiRoomType {
+  id: string;
+  dormitoryId: string;
+  code: string;
+  name: string;
+  monthlyRent: number;
+  depositAmount: number;
+  maximumOccupants: number;
+}
+
+export interface RoomCreationOptions {
+  buildings: ApiBuilding[];
+  floors: ApiFloor[];
+  roomTypes: ApiRoomType[];
+}
+
 interface ApiRoom {
   id: string;
   dormitoryId: string;
@@ -132,6 +162,10 @@ interface ApiDashboardSummary {
   revenueThisMonth: number | null;
   revenueTrend: Array<{ label: string; amount: number; period?: string }> | null;
   openMaintenanceCount: number | null;
+  parcelsAwaitingPickup?: number | null;
+  activeVisitorsCount?: number | null;
+  expiringReservationsCount?: number | null;
+  pendingPaymentConfirmations?: number | null;
   recentActivity: Array<{
     id: string;
     message: string;
@@ -743,6 +777,8 @@ export async function createInvoice(input: {
 export async function recordInvoicePayment(
   invoiceId: string,
   amount: number,
+  method: "Cash" | "BankTransfer" | "QrCode" | "Other" = "Cash",
+  referenceNumber?: string | null,
 ): Promise<{ success: true; invoice: Invoice } | { success: false; error: string }> {
   try {
     const payment = await apiRequest<{ id: string }>("/payments", {
@@ -750,10 +786,19 @@ export async function recordInvoicePayment(
       body: {
         invoiceId,
         amount,
-        method: "Cash",
+        method,
+        ...(referenceNumber?.trim() ? { referenceNumber: referenceNumber.trim() } : {}),
       },
     });
     await apiRequest(`/payments/${payment.id}/confirm`, { method: "POST" });
+    try {
+      await apiRequest("/receipts", {
+        method: "POST",
+        body: { paymentId: payment.id },
+      });
+    } catch {
+      // Receipt issuance is best-effort; do not fail payment confirmation if receipt already exists or lacks permission.
+    }
     const invoice = await getInvoiceById(invoiceId);
     if (!invoice) {
       return { success: false, error: "Invoice was not found after payment confirmation." };
@@ -778,6 +823,9 @@ export async function createTenant(input: {
   emergencyContact: EmergencyContact;
   roomId?: string | null;
   organizationId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  depositAmount?: number | null;
 }): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
   try {
     let firstName = input.firstName?.trim() ?? "";
@@ -815,18 +863,26 @@ export async function createTenant(input: {
 
     if (input.roomId) {
       const room = await apiRequest<ApiRoom>(`/rooms/${encodeURIComponent(input.roomId)}`);
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1);
-      endDate.setDate(endDate.getDate() - 1);
+      const defaultStart = new Date();
+      const defaultEnd = new Date(defaultStart);
+      defaultEnd.setFullYear(defaultEnd.getFullYear() + 1);
+      defaultEnd.setDate(defaultEnd.getDate() - 1);
+
+      const startDateStr = input.startDate?.trim() || defaultStart.toISOString().slice(0, 10);
+      const endDateStr = input.endDate?.trim() || defaultEnd.toISOString().slice(0, 10);
+      const contractBody: Record<string, unknown> = {
+        roomId: room.id,
+        tenantId: created.id,
+        startDate: startDateStr,
+        endDate: endDateStr,
+      };
+      if (typeof input.depositAmount === "number" && Number.isFinite(input.depositAmount) && input.depositAmount >= 0) {
+        contractBody.depositAmount = input.depositAmount;
+      }
+
       const contract = await apiRequest<ApiContract>("/contracts", {
         method: "POST",
-        body: {
-          roomId: room.id,
-          tenantId: created.id,
-          startDate: startDate.toISOString().slice(0, 10),
-          endDate: endDate.toISOString().slice(0, 10),
-        },
+        body: contractBody,
       });
       await apiRequest(`/contracts/${contract.id}/activate`, { method: "POST" });
     }
@@ -907,6 +963,56 @@ export async function checkOutTenant(
   }
 }
 
+export async function getRoomCreationOptions(): Promise<RoomCreationOptions> {
+  const safeGet = async <T>(path: string): Promise<T[]> => {
+    try {
+      return await getAll<T>(path);
+    } catch {
+      return [];
+    }
+  };
+  const [buildings, floors, roomTypes] = await Promise.all([
+    safeGet<ApiBuilding>("/buildings"),
+    safeGet<ApiFloor>("/floors"),
+    safeGet<ApiRoomType>("/room-types"),
+  ]);
+  return { buildings, floors, roomTypes };
+}
+
+export async function createRoom(input: {
+  buildingId: string;
+  floorId: string;
+  roomTypeId: string;
+  roomNumber: string;
+  monthlyRent: number;
+  depositAmount: number;
+  maximumOccupants: number;
+  description?: string | null;
+}): Promise<{ success: true; room: Room } | { success: false; error: string }> {
+  try {
+    const created = await apiRequest<ApiRoom>("/rooms", {
+      method: "POST",
+      body: {
+        buildingId: input.buildingId,
+        floorId: input.floorId,
+        roomTypeId: input.roomTypeId,
+        roomNumber: input.roomNumber.trim(),
+        monthlyRent: input.monthlyRent,
+        depositAmount: input.depositAmount,
+        maximumOccupants: input.maximumOccupants,
+        description: input.description?.trim() || null,
+      },
+    });
+    const contracts = await getApiContracts();
+    return { success: true, room: mapRoom(created, contracts) };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+}
+
 export async function updateRoomStatus(
   roomId: string,
   status: RoomStatus,
@@ -961,6 +1067,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     outstandingBalance: summary.outstandingInvoicesTotal ?? 0,
     unpaidInvoices: summary.outstandingInvoicesCount ?? 0,
     openMaintenanceIssues: summary.openMaintenanceCount ?? 0,
+    parcelsAwaitingPickup: summary.parcelsAwaitingPickup ?? 0,
+    activeVisitorsCount: summary.activeVisitorsCount ?? 0,
+    expiringReservationsCount: summary.expiringReservationsCount ?? 0,
+    pendingPaymentConfirmations: summary.pendingPaymentConfirmations ?? 0,
   };
 }
 

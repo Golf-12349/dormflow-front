@@ -56,7 +56,7 @@ const OPERATION_ALLOWLIST: Record<string, string[]> = {
   parking: ["release"],
   announcements: ["publish", "archive", "cancel"],
   notifications: ["read"],
-  users: ["status", "roles"],
+  users: ["status", "roles", "dormitories"],
   roles: ["permissions", "delete"],
 };
 
@@ -156,7 +156,29 @@ export async function managementAction(
             body.organizationId = fallbackOrgId;
           }
         }
-        await apiRequest(endpoint, { method: "POST", body });
+        const created = await apiRequest<{ id?: string; organizationId?: string }>(endpoint, {
+          method: "POST",
+          body,
+        });
+        if (resource === "users" && created?.id) {
+          try {
+            const dormPage = await apiRequest<{ items?: Array<{ id: string; organizationId: string }> }>(
+              "/dormitories",
+              { query: { page: 1, pageSize: 50 }, cache: "no-store" },
+            );
+            const matchingDorms = (dormPage?.items ?? []).filter(
+              (dorm) => !created.organizationId || dorm.organizationId === created.organizationId,
+            );
+            for (const [index, dorm] of matchingDorms.entries()) {
+              await apiRequest(`/users/${encodeURIComponent(created.id)}/dormitories`, {
+                method: "POST",
+                body: { dormitoryId: dorm.id, isPrimary: index === 0 },
+              });
+            }
+          } catch {
+            // Best-effort dormitory assignment for new user.
+          }
+        }
       } else {
         const id = String(formData.get("recordId") ?? "");
         if (!/^[0-9a-f-]{36}$/iu.test(id)) throw new Error(t.management.workflows.failure);
@@ -229,8 +251,9 @@ export async function managementAction(
         await apiRequest(`${itemPath}/terminate`, { method: "POST", body: { reason: String(formData.get("reason") ?? "").trim() || null } });
       } else if (operation === "refund") {
         if (resource === "deposits") {
-          const refundAmount = Number(formData.get("refundAmount"));
-          if (!Number.isFinite(refundAmount) || refundAmount <= 0) throw new Error(t.management.workflows.required);
+          const rawRefund = String(formData.get("refundAmount") ?? "").trim();
+          const refundAmount = rawRefund === "" ? 0 : Number(rawRefund);
+          if (!Number.isFinite(refundAmount) || refundAmount < 0) throw new Error(t.management.workflows.required);
           await apiRequest(`${itemPath}/refund`, {
             method: "POST",
             body: {
@@ -246,6 +269,13 @@ export async function managementAction(
         }
       } else if (operation === "assign") {
         await apiRequest(`${itemPath}/assign`, { method: "POST", body: createBody(formData, MANAGEMENT_OPERATION_FIELDS.assign) });
+      } else if (operation === "dormitories") {
+        const dormitoryId = String(formData.get("dormitoryId") ?? "").trim();
+        if (!dormitoryId) throw new Error(t.management.workflows.required);
+        await apiRequest(`${itemPath}/dormitories`, {
+          method: "POST",
+          body: { dormitoryId, isPrimary: true },
+        });
       } else if (operation === "pickup") {
         await apiRequest(`${itemPath}/pickup`, { method: "POST", body: { pickedUpByName: String(formData.get("pickedUpByName") ?? "").trim() || null } });
       } else if (operation === "roles" || operation === "permissions") {
