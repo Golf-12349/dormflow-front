@@ -18,6 +18,10 @@ export interface AdminUser {
   email: string;
   phone: string;
   role: UserRole;
+  /** True when the caller is SuperAdmin (not bound to any one organization). */
+  isSuperAdmin?: boolean;
+  /** Organization the caller belongs to; null for SuperAdmin. */
+  organizationId?: string | null;
   /** Tailwind classes for the avatar bubble. */
   avatarClass: string;
 }

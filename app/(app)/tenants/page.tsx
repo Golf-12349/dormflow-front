@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
-import { getInvoices, getRooms, getTenants } from "@/lib/api/dormflow";
+import {
+  getInvoices,
+  getOrganizations,
+  getRooms,
+  getTenants,
+} from "@/lib/api/dormflow";
 import { AddTenantForm } from "./add-tenant-form";
 import { TenantTable } from "./tenant-table";
 
@@ -13,23 +18,14 @@ export const metadata: Metadata = {
  * 6.1/6.2 — the tenant table screen.
  *
  * Stays an async Server Component (locked "Data access" decision: data is
- * fetched here, not in the client). It pulls `getTenants()` (unfiltered —
- * filters are 6.2, applied client-side), `getRooms()` (room-number
- * resolution and the drawer's monthly rate) and each tenant's invoices via
- * `getInvoicesByTenant()` (pre-loaded once for every profile, then flattened
- * into one array to avoid repeating the invoice request for each tenant;
- * the drawer still filters by `tenantId` client-side) and passes them down
- * as plain props. All interactivity — the search box, the status filter and
- * the sortable columns (6.2), plus the profile drawer with its lease
- * progress indicator (6.3/6.4) — lives in `<TenantTable />`; 6.5 adds the
- * add-tenant form rendered here and contact editing inside that drawer
- * (check-out, the empty state and the action menu are still to come).
- *
- * Every user-facing string lives in the `t.tenants` group (`lib/i18n/lo.ts`),
- * written in Lao from the start rather than localised after the fact.
+ * fetched here, not in the client).
  */
 export default async function TenantsPage() {
-  const [tenants, rooms] = await Promise.all([getTenants(), getRooms()]);
+  const [tenants, rooms, organizations] = await Promise.all([
+    getTenants(),
+    getRooms(),
+    getOrganizations(),
+  ]);
 
   // 6.5 add-tenant form options: only vacant rooms can take a new tenant
   // (the Server Action re-checks this against the data layer before writing).
@@ -48,7 +44,10 @@ export default async function TenantsPage() {
         </p>
       </div>
 
-      <AddTenantForm vacantRooms={vacantRooms} />
+      <AddTenantForm
+        vacantRooms={vacantRooms}
+        organizations={organizations}
+      />
 
       <TenantTable tenants={tenants} rooms={rooms} invoices={invoices} />
     </div>

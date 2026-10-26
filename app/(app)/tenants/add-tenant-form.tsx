@@ -24,6 +24,8 @@ const LEGEND_CLASSES =
 interface AddTenantFormProps {
   /** Rooms with status "vacant", pre-filtered by the page — assignable options. */
   vacantRooms: Room[];
+  /** Accessible organizations for SuperAdmin/multi-org selection. */
+  organizations?: { id: string; code: string; name: string }[];
 }
 
 /**
@@ -33,7 +35,10 @@ interface AddTenantFormProps {
  * The panel stays open after a result so errors remain readable; collapsing
  * it unmounts the uncontrolled inputs, which clears the form.
  */
-export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
+export function AddTenantForm({
+  vacantRooms,
+  organizations = [],
+}: AddTenantFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createTenantAction,
@@ -105,131 +110,157 @@ export function AddTenantForm({ vacantRooms }: AddTenantFormProps) {
               </button>
             </header>
 
-          <form action={formAction} className="space-y-5" noValidate>
-            {state.status !== "idle" && state.message ? (
-              <div
-                role="status"
-                aria-live="polite"
-                className={cn(
-                  "flex items-start gap-2 rounded-xl border p-3 text-xs",
-                  state.status === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-rose-200 bg-rose-50 text-rose-700",
-                )}
-              >
-                {state.status === "success" ? (
-                  <CheckCircle2
-                    className="mt-0.5 size-4 shrink-0 text-emerald-600"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <AlertCircle
-                    className="mt-0.5 size-4 shrink-0 text-rose-500"
-                    aria-hidden="true"
-                  />
-                )}
-                <p>{state.message}</p>
-              </div>
-            ) : null}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <TenantFormField
-                  id="add-full-name"
-                  name="fullName"
-                  label={t.tenants.add.fullName}
-                  autoComplete="name"
-                />
-              </div>
-              <TenantFormField
-                id="add-email"
-                name="email"
-                label={t.tenants.profile.fields.email}
-                type="email"
-                autoComplete="email"
-              />
-              <TenantFormField
-                id="add-phone"
-                name="phone"
-                label={t.tenants.profile.fields.phone}
-                type="tel"
-                autoComplete="tel"
-              />
-              <TenantFormField
-                id="add-id-card"
-                name="idCard"
-                label={t.tenants.profile.fields.idCard}
-              />
-            </div>
-
-            <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <legend className={LEGEND_CLASSES}>
-                {t.tenants.profile.sections.emergency}
-              </legend>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TenantFormField
-                  id="add-ec-name"
-                  name="emergencyName"
-                  label={t.tenants.profile.fields.contactName}
-                />
-                <TenantFormField
-                  id="add-ec-phone"
-                  name="emergencyPhone"
-                  label={t.tenants.profile.fields.phone}
-                  type="tel"
-                />
-              </div>
-            </fieldset>
-
-            <div className="space-y-1.5">
-              <label htmlFor="add-room" className={LABEL_CLASSES}>
-                {t.tenants.fields.room}
-              </label>
-              <select
-                id="add-room"
-                name="roomId"
-                defaultValue=""
-                className={INPUT_CLASSES}
-              >
-                <option value="">{t.tenants.noRoom}</option>
-                {vacantRooms.map((room) => (
-                  <option key={room.id} value={room.id}>
-                    {t.rooms.roomTitle(room.number)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-              >
-                {t.tenants.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2
-                      className="size-4 animate-spin"
+            <form action={formAction} className="space-y-5" noValidate>
+              {state.status !== "idle" && state.message ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={cn(
+                    "flex items-start gap-2 rounded-xl border p-3 text-xs",
+                    state.status === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-rose-200 bg-rose-50 text-rose-700",
+                  )}
+                >
+                  {state.status === "success" ? (
+                    <CheckCircle2
+                      className="mt-0.5 size-4 shrink-0 text-emerald-600"
                       aria-hidden="true"
                     />
-                    <span>{t.tenants.add.saving}</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="size-4" aria-hidden="true" />
-                    <span>{t.tenants.add.submit}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+                  ) : (
+                    <AlertCircle
+                      className="mt-0.5 size-4 shrink-0 text-rose-500"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <p>{state.message}</p>
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TenantFormField
+                  id="add-first-name"
+                  name="firstName"
+                  label={t.tenants.add.firstName}
+                  autoComplete="given-name"
+                />
+                <TenantFormField
+                  id="add-last-name"
+                  name="lastName"
+                  label={t.tenants.add.lastName}
+                  autoComplete="family-name"
+                />
+                <TenantFormField
+                  id="add-email"
+                  name="email"
+                  label={t.tenants.profile.fields.email}
+                  type="email"
+                  autoComplete="email"
+                />
+                <TenantFormField
+                  id="add-phone"
+                  name="phone"
+                  label={t.tenants.profile.fields.phone}
+                  type="tel"
+                  autoComplete="tel"
+                />
+                <div className="sm:col-span-2">
+                  <TenantFormField
+                    id="add-id-card"
+                    name="idCard"
+                    label={t.tenants.profile.fields.idCard}
+                  />
+                </div>
+              </div>
+
+              <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <legend className={LEGEND_CLASSES}>
+                  {t.tenants.profile.sections.emergency}
+                </legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TenantFormField
+                    id="add-ec-name"
+                    name="emergencyName"
+                    label={t.tenants.profile.fields.contactName}
+                  />
+                  <TenantFormField
+                    id="add-ec-phone"
+                    name="emergencyPhone"
+                    label={t.tenants.profile.fields.phone}
+                    type="tel"
+                  />
+                </div>
+              </fieldset>
+
+              {organizations.length > 0 ? (
+                <div className="space-y-1.5">
+                  <label htmlFor="add-organization" className={LABEL_CLASSES}>
+                    {t.tenants.fields.organization}
+                  </label>
+                  <select
+                    id="add-organization"
+                    name="organizationId"
+                    defaultValue={organizations[0].id}
+                    className={INPUT_CLASSES}
+                  >
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.code} — {org.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <div className="space-y-1.5">
+                <label htmlFor="add-room" className={LABEL_CLASSES}>
+                  {t.tenants.fields.room}
+                </label>
+                <select
+                  id="add-room"
+                  name="roomId"
+                  defaultValue=""
+                  className={INPUT_CLASSES}
+                >
+                  <option value="">{t.tenants.noRoom}</option>
+                  {vacantRooms.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {t.rooms.roomTitle(room.number)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+                >
+                  {t.tenants.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                      <span>{t.tenants.add.saving}</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="size-4" aria-hidden="true" />
+                      <span>{t.tenants.add.submit}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       ) : null}

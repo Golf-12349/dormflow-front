@@ -1,9 +1,15 @@
+export type ManagementSelectOption = {
+  value: string;
+  label: string;
+};
+
 export type ManagementField = {
   name: string;
   type?: "text" | "email" | "tel" | "number" | "date" | "datetime-local" | "password" | "textarea" | "select";
   required?: boolean;
   array?: boolean;
   options?: string[];
+  selectOptions?: ManagementSelectOption[];
 };
 
 const id = (name: string): ManagementField => ({ name, required: true });
@@ -50,15 +56,16 @@ export const MANAGEMENT_OPERATIONS: Record<string, string[]> = {
   buildings: ["status", "delete"],
   floors: ["status", "delete"],
   "room-types": ["status", "delete"],
-  contracts: ["activate", "terminate"],
-  reservations: ["cancel"],
+  contracts: ["activate", "terminate", "renew"],
+  invoices: ["issue", "cancel"],
+  reservations: ["confirm", "cancel"],
   payments: ["confirm", "refund"],
   deposits: ["refund"],
-  "maintenance-requests": ["assign", "status"],
-  parcels: ["pickup"],
+  "maintenance-requests": ["assign", "status", "timeline", "cost"],
+  parcels: ["pickup", "return"],
   visitors: ["checkout"],
   parking: ["release"],
-  announcements: ["publish", "archive"],
+  announcements: ["publish", "archive", "cancel"],
   notifications: ["read"],
   users: ["status", "roles"],
   roles: ["permissions", "delete"],
@@ -67,6 +74,9 @@ export const MANAGEMENT_OPERATIONS: Record<string, string[]> = {
 export const MANAGEMENT_OPERATION_FIELDS: Record<string, ManagementField[]> = {
   status: [choice("status", ["Active", "Inactive"])],
   terminate: [text("reason")],
+  renew: [date("endDate"), number("monthlyRent", false), number("waterRatePerUnit", false), number("electricityRatePerUnit", false)],
+  timeline: [text("note", true)],
+  cost: [number("amount", true), text("description", true)],
   refund: [number("refundAmount", false), text("reason"), text("deductionReason")],
   assign: [id("technicianId")],
   pickup: [text("pickedUpByName")],

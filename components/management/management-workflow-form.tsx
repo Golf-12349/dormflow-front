@@ -22,7 +22,12 @@ function InputField({
   value?: unknown;
 }) {
   const label = fieldLabel(field.name);
-  const currentValue = value === null || value === undefined ? "" : String(value);
+  const rawValue = value === null || value === undefined ? "" : String(value);
+  const defaultSelectValue =
+    rawValue ||
+    (field.selectOptions?.length === 1 && (field.required || field.name === "organizationId")
+      ? field.selectOptions[0].value
+      : "");
   const className = "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
   return (
@@ -32,12 +37,26 @@ function InputField({
         <textarea
           name={field.name}
           required={field.required}
-          defaultValue={currentValue}
+          defaultValue={rawValue}
           rows={3}
           className={className}
         />
+      ) : field.selectOptions && field.selectOptions.length > 0 ? (
+        <select
+          name={field.name}
+          required={field.required}
+          defaultValue={defaultSelectValue}
+          className={className}
+        >
+          <option value="" disabled={field.required}>—</option>
+          {field.selectOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       ) : field.type === "select" ? (
-        <select name={field.name} required={field.required} defaultValue={currentValue} className={className}>
+        <select name={field.name} required={field.required} defaultValue={rawValue} className={className}>
           <option value="" disabled={field.required}>—</option>
           {field.options?.map((option) => {
             const values = t.management.workflows.statusValues as Record<string, string>;
@@ -50,7 +69,7 @@ function InputField({
           type={field.type ?? "text"}
           required={field.required}
           step={field.type === "number" ? "any" : undefined}
-          defaultValue={currentValue}
+          defaultValue={rawValue}
           className={className}
         />
       )}

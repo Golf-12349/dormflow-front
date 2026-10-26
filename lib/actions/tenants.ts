@@ -30,18 +30,6 @@ import type {
 /** Deliberately loose shape check; the backend performs the authoritative validation. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * Lao wording for the English errors `createTenant()` /
- * `updateTenantContact()` / `checkOutTenant()` in `lib/api/dormflow.ts` can
- * return (the data layer stays English by convention):
- *
- * - `"Room not found."`
- * - `` `Room "<number>" is not vacant.` ``
- * - `"Tenant not found."`
- * - `"Tenant is not active."`
- * - `"Tenant has no room assigned."`
- * - `` `Room "<number>" is not occupied.` ``
- */
 const DATA_LAYER_ERROR_TRANSLATIONS: Array<{
   pattern: RegExp;
   localize: (match: RegExpExecArray) => string;
@@ -99,18 +87,31 @@ export async function createTenantAction(
   _prevState: AddTenantFormState,
   formData: FormData,
 ): Promise<AddTenantFormState> {
-  const fullName = readField(formData, "fullName");
+  let firstName = readField(formData, "firstName");
+  let lastName = readField(formData, "lastName");
+  const fullNameInput = readField(formData, "fullName");
+
+  if (!firstName && !lastName && fullNameInput) {
+    const parts = fullNameInput.split(/\s+/u);
+    firstName = parts[0] ?? "";
+    lastName = parts.slice(1).join(" ") || "-";
+  }
+
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
   const idCard = readField(formData, "idCard");
   const emergencyName = readField(formData, "emergencyName");
   const emergencyPhone = readField(formData, "emergencyPhone");
   const roomId = readField(formData, "roomId") || null;
+  const organizationId = readField(formData, "organizationId") || null;
 
   // Server-side validation — the form's `required` attributes are only a
   // convenience for the browser; nothing coming from the client is trusted.
-  if (!fullName) {
-    return { status: "error", message: t.tenants.errors.fullNameRequired };
+  if (!firstName) {
+    return { status: "error", message: t.tenants.errors.firstNameRequired };
+  }
+  if (!lastName) {
+    return { status: "error", message: t.tenants.errors.lastNameRequired };
   }
   if (!email) {
     return { status: "error", message: t.tenants.errors.emailRequired };
@@ -152,7 +153,9 @@ export async function createTenantAction(
   }
 
   const result = await createTenant({
-    fullName,
+    firstName,
+    lastName,
+    fullName: `${firstName} ${lastName}`.trim(),
     email,
     phone,
     idCard,
@@ -161,6 +164,7 @@ export async function createTenantAction(
       phone: emergencyPhone,
     },
     roomId,
+    organizationId,
   });
 
   if (!result.success) {
@@ -248,8 +252,8 @@ export async function updateTenantContactAction(
 }
 
 /**
- * 6.5 — "check out tenant". Two records move in one mutation (tenant →
- * `inactive`, room → `vacant`), so eligibility is re-read from the data layer
+ * 6.5 — "check out tenant". Two records move in one mutation (tenant ->
+ * `inactive`, room -> `vacant`), so eligibility is re-read from the data layer
  * and re-validated here before the write; `checkOutTenant()` re-checks both
  * stores as well. Confirmation is a client-side concern — this action only
  * guards state, never triggers on its own.

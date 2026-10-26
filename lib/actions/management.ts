@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 
 import { API_BASE_URL, ApiError, apiRequest } from "@/lib/api/client";
-import { MANAGEMENT_CREATE_FIELDS, MANAGEMENT_OPERATION_FIELDS, MANAGEMENT_UPDATE_FIELDS, type ManagementField } from "@/lib/management-workflows";
+import { resolveDefaultOrganizationId } from "@/lib/api/dormflow";
+import {
+  MANAGEMENT_CREATE_FIELDS,
+  MANAGEMENT_OPERATION_FIELDS,
+  MANAGEMENT_UPDATE_FIELDS,
+  type ManagementField,
+} from "@/lib/management-workflows";
 import { verifySession } from "@/lib/session";
 import { t } from "@/lib/i18n";
 
@@ -17,6 +23,7 @@ const RESOURCE_PATHS: Record<string, string> = {
   floors: "/floors",
   "room-types": "/room-types",
   contracts: "/contracts",
+  invoices: "/invoices",
   reservations: "/reservations",
   payments: "/payments",
   deposits: "/deposits",
@@ -38,15 +45,16 @@ const OPERATION_ALLOWLIST: Record<string, string[]> = {
   buildings: ["status", "delete"],
   floors: ["status", "delete"],
   "room-types": ["status", "delete"],
-  contracts: ["activate", "terminate"],
-  reservations: ["cancel"],
+  contracts: ["activate", "terminate", "renew"],
+  invoices: ["issue", "cancel"],
+  reservations: ["confirm", "cancel"],
   payments: ["confirm", "refund"],
   deposits: ["refund"],
-  "maintenance-requests": ["assign", "status"],
-  parcels: ["pickup"],
+  "maintenance-requests": ["assign", "status", "timeline", "cost"],
+  parcels: ["pickup", "return"],
   visitors: ["checkout"],
   parking: ["release"],
-  announcements: ["publish", "archive"],
+  announcements: ["publish", "archive", "cancel"],
   notifications: ["read"],
   users: ["status", "roles"],
   roles: ["permissions", "delete"],
@@ -59,6 +67,7 @@ const RESOURCE_GROUPS: Record<string, string> = {
   floors: "properties",
   "room-types": "properties",
   contracts: "residents",
+  invoices: "finance",
   reservations: "residents",
   payments: "finance",
   deposits: "finance",
@@ -122,7 +131,7 @@ export async function managementAction(
   _previous: ManagementActionState,
   formData: FormData,
 ): Promise<ManagementActionState> {
-  await verifySession();
+  const session = await verifySession();
   const resource = String(formData.get("resource") ?? "");
   const operation = String(formData.get("operation") ?? "");
   const endpoint = RESOURCE_PATHS[resource];
@@ -136,6 +145,17 @@ export async function managementAction(
       if (!fields) return { status: "error", message: t.management.workflows.failure };
       const body = createBody(formData, fields);
       if (operation === "create") {
+        if (
+          fields.some((field) => field.name === "organizationId") &&
+          !body.organizationId
+        ) {
+          const fallbackOrgId = await resolveDefaultOrganizationId(
+            session.user.organizationId,
+          );
+          if (fallbackOrgId) {
+            body.organizationId = fallbackOrgId;
+          }
+        }
         await apiRequest(endpoint, { method: "POST", body });
       } else {
         const id = String(formData.get("recordId") ?? "");
@@ -161,8 +181,50 @@ export async function managementAction(
             : ["Active", "Inactive"];
         if (!allowed.includes(status)) throw new Error(t.management.workflows.failure);
         await apiRequest(`${itemPath}/status`, { method: "PATCH", body: { status } });
-      } else if (operation === "activate" || operation === "cancel" || operation === "confirm" || operation === "checkout" || operation === "release" || operation === "publish" || operation === "archive" || operation === "read") {
+      } else if (
+        operation === "activate" ||
+        operation === "cancel" ||
+        operation === "confirm" ||
+        operation === "checkout" ||
+        operation === "release" ||
+        operation === "publish" ||
+        operation === "archive" ||
+        operation === "read" ||
+        operation === "return" ||
+        operation === "issue"
+      ) {
         await apiRequest(`${itemPath}/${operation === "read" ? "read" : operation}`, { method: "POST" });
+      } else if (operation === "renew") {
+        const endDate = String(formData.get("endDate") ?? "").trim();
+        const monthlyRent = formData.get("monthlyRent") ? Number(formData.get("monthlyRent")) : null;
+        const waterRatePerUnit = formData.get("waterRatePerUnit") ? Number(formData.get("waterRatePerUnit")) : null;
+        const electricityRatePerUnit = formData.get("electricityRatePerUnit") ? Number(formData.get("electricityRatePerUnit")) : null;
+        await apiRequest(`${itemPath}/renew`, {
+          method: "POST",
+          body: {
+            endDate,
+            monthlyRent,
+            waterRatePerUnit,
+            electricityRatePerUnit,
+          },
+        });
+      } else if (operation === "timeline") {
+        const note = String(formData.get("note") ?? "").trim();
+        if (!note) throw new Error(t.management.workflows.required);
+        await apiRequest(`${itemPath}/timeline`, {
+          method: "POST",
+          body: { note },
+        });
+      } else if (operation === "cost") {
+        const amount = Number(formData.get("amount"));
+        const description = String(formData.get("description") ?? "").trim();
+        if (!Number.isFinite(amount) || amount <= 0 || !description) {
+          throw new Error(t.management.workflows.required);
+        }
+        await apiRequest(`${itemPath}/costs`, {
+          method: "POST",
+          body: { amount, description },
+        });
       } else if (operation === "terminate") {
         await apiRequest(`${itemPath}/terminate`, { method: "POST", body: { reason: String(formData.get("reason") ?? "").trim() || null } });
       } else if (operation === "refund") {

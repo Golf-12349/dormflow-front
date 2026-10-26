@@ -285,6 +285,7 @@ export const lo = {
         password: "ລະຫັດຜ່ານ",
         coTenantIds: "ລະຫັດຜູ້ເຊົ່າຮ່ວມ",
         maintenanceRequestId: "ລະຫັດຄຳຮ້ອງສ້ອມແປງ",
+        note: "ບັນທຶກ",
       },
     },
     workflows: {
@@ -296,11 +297,16 @@ export const lo = {
       status: "ປ່ຽນສະຖານະ",
       activate: "ເປີດໃຊ້ສັນຍາ",
       terminate: "ສິ້ນສຸດສັນຍາ",
-      cancel: "ຍົກເລີກການຈອງ",
-      confirm: "ຢືນຢັນການຊຳລະ",
+      renew: "ຕໍ່ສັນຍາ",
+      issue: "ອອກໃບແຈ້ງໜີ້",
+      cancel: "ຍົກເລີກ",
+      confirm: "ຢືນຢັນ",
       refund: "ຄືນເງິນ",
       assign: "ມອບໝາຍຊ່າງ",
+      timeline: "ເພີ່ມບັນທຶກ",
+      cost: "ບັນທຶກຄ່າໃຊ້ຈ່າຍ",
       pickup: "ຢືນຢັນການຮັບ",
+      return: "ສົ່ງຄືນພັດສະດຸ",
       checkout: "ບັນທຶກອອກ",
       release: "ຄືນບ່ອນຈອດ",
       publish: "ເຜີຍແຜ່",
@@ -720,9 +726,6 @@ export const lo = {
         comparisonPeriod: string,
       ) => `${label}: ${value} (${hint}). ${changes} ທຽບກັບ ${comparisonPeriod}.`,
     },
-
-
-
   },
   /**
    * Phase 6 tenant table (`app/(app)/tenants/page.tsx`). Lao has no plural forms,
@@ -733,10 +736,12 @@ export const lo = {
     subtitle: (count: number) => `${count} ຜູ້ເຊົ່າທັງໝົດ.`,
     /** Shown in the room column when a tenant has no room assigned yet. */
     noRoom: "ຍັງບໍ່ມີຫ້ອງ",
+    selectOrganization: "ເລືອກອົງກອນ",
     /** Table column headers. */
     fields: {
       tenant: "ຜູ້ເຊົ່າ",
       room: "ຫ້ອງ",
+      organization: "ອົງກອນ",
       moveIn: "ວັນເຂົ້າພັກ",
       leaseEnd: "ສັນຍາສິ້ນສຸດ",
       balance: "ຍອດຄ້າງຊຳລະ",
@@ -802,7 +807,8 @@ export const lo = {
     add: {
       trigger: "ເພີ່ມຜູ້ເຊົ່າ",
       title: "ເພີ່ມຜູ້ເຊົ່າໃໝ່",
-      /** The only field label not already covered by `profile.fields`. */
+      firstName: "ຊື່",
+      lastName: "ນາມສະກຸນ",
       fullName: "ຊື່ເຕັມ",
       submit: "ບັນທຶກຜູ້ເຊົ່າ",
       saving: "ກຳລັງບັນທຶກ…",
@@ -817,6 +823,8 @@ export const lo = {
     },
     /** 6.5 — server-side validation + data-layer errors for both mutations. */
     errors: {
+      firstNameRequired: "ກະລຸນາປ້ອນຊື່.",
+      lastNameRequired: "ກະລຸນາປ້ອນນາມສະກຸນ.",
       fullNameRequired: "ກະລຸນາປ້ອນຊື່ເຕັມ.",
       emailRequired: "ກະລຸນາປ້ອນອີເມວ.",
       emailInvalid: "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ.",

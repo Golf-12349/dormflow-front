@@ -41,6 +41,7 @@ interface ApiLoginResponse {
     lastName: string;
     phone: string | null;
     roles: string[];
+    organizationId?: string | null;
   };
 }
 
@@ -116,12 +117,17 @@ export async function loginAction(
     };
   }
 
+  const normalizedRoles = result.user.roles.map((role) => role.toLowerCase());
+  const isSuperAdmin = normalizedRoles.some((role) => role === "superadmin");
+
   const user = {
     id: result.user.id,
     name: `${result.user.firstName} ${result.user.lastName}`.trim(),
     email: result.user.email,
     phone: result.user.phone ?? "",
     role: frontendRole(result.user.roles),
+    isSuperAdmin,
+    organizationId: result.user.organizationId ?? null,
     avatarClass: "bg-indigo-500",
   };
   const { value, maxAge } = createSession(user, remember, {

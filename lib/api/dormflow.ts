@@ -31,6 +31,13 @@ interface PagedData<T> {
   totalPages: number;
 }
 
+export interface ApiOrganization {
+  id: string;
+  code: string;
+  name: string;
+  status?: string;
+}
+
 interface ApiRoom {
   id: string;
   dormitoryId: string;
@@ -123,7 +130,7 @@ interface ApiDashboardSummary {
   outstandingInvoicesTotal: number | null;
   outstandingInvoicesCount: number | null;
   revenueThisMonth: number | null;
-  revenueTrend: Array<{ label: string; amount: number }> | null;
+  revenueTrend: Array<{ label: string; amount: number; period?: string }> | null;
   openMaintenanceCount: number | null;
   recentActivity: Array<{
     id: string;
@@ -170,6 +177,55 @@ const getApiTenants = cache(() => getAll<ApiTenant>("/tenants"));
 const getApiContracts = cache(() => getAll<ApiContract>("/contracts"));
 const getApiInvoices = cache(() => getAll<ApiInvoice>("/invoices"));
 const getApiDormitories = cache(() => getAll<ApiDormitory>("/dormitories"));
+
+/** Fetches accessible organizations; returns `[]` if caller lacks `organizations.view`. */
+export async function getOrganizations(): Promise<ApiOrganization[]> {
+  try {
+    return await getAll<ApiOrganization>("/organizations");
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Resolves a fallback `organizationId` for create mutations when SuperAdmin
+ * has not explicitly picked one or when a single organization exists.
+ */
+export async function resolveDefaultOrganizationId(
+  preferredOrganizationId?: string | null,
+  roomId?: string | null,
+): Promise<string | null> {
+  if (preferredOrganizationId?.trim()) {
+    return preferredOrganizationId.trim();
+  }
+
+  try {
+    const dormitories = await getApiDormitories();
+    if (roomId) {
+      const rooms = await getApiRooms();
+      const matchedRoom = rooms.find((room) => room.id === roomId);
+      if (matchedRoom) {
+        const matchedDorm = dormitories.find(
+          (dorm) => dorm.id === matchedRoom.dormitoryId,
+        );
+        if (matchedDorm?.organizationId) {
+          return matchedDorm.organizationId;
+        }
+      }
+    }
+    if (dormitories[0]?.organizationId) {
+      return dormitories[0].organizationId;
+    }
+  } catch {
+    // Ignore and fall back to /organizations
+  }
+
+  const organizations = await getOrganizations();
+  return organizations[0]?.id ?? null;
+}
 
 function parseFloor(floorName: string, roomNumber: string): number {
   const fromName = /\d+/u.exec(floorName)?.[0];
@@ -643,12 +699,6 @@ export async function createInvoice(input: {
   otherFee: number;
 }): Promise<{ success: true; invoice: Invoice } | { success: false; error: string }> {
   try {
-    if (input.otherFee > 0) {
-      return {
-        success: false,
-        error: "The backend does not support additional invoice fees yet.",
-      };
-    }
     const contracts = await getApiContracts();
     const contract = activeContracts(contracts).find(
       (item) => item.roomId === input.roomId,
@@ -666,6 +716,15 @@ export async function createInvoice(input: {
         },
       },
     );
+    if (input.otherFee > 0) {
+      await apiRequest(`/invoices/${invoice.id}/charges`, {
+        method: "POST",
+        body: {
+          description: "Other fee",
+          amount: input.otherFee,
+        },
+      });
+    }
     const issued = await apiRequest<ApiInvoice>(`/invoices/${invoice.id}/issue`, {
       method: "POST",
     });
@@ -709,27 +768,49 @@ export async function recordInvoicePayment(
 }
 
 export async function createTenant(input: {
-  fullName: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   email: string;
   phone: string;
   idCard: string;
   occupation?: string;
   emergencyContact: EmergencyContact;
   roomId?: string | null;
+  organizationId?: string | null;
 }): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
   try {
-    const nameParts = input.fullName.trim().split(/\s+/u);
+    let firstName = input.firstName?.trim() ?? "";
+    let lastName = input.lastName?.trim() ?? "";
+    if (!firstName && input.fullName) {
+      const nameParts = input.fullName.trim().split(/\s+/u);
+      firstName = nameParts[0] ?? "";
+      lastName = nameParts.slice(1).join(" ") || "-";
+    } else if (!lastName) {
+      lastName = "-";
+    }
+
+    const resolvedOrganizationId = await resolveDefaultOrganizationId(
+      input.organizationId,
+      input.roomId,
+    );
+
+    const body: Record<string, unknown> = {
+      firstName,
+      lastName,
+      email: input.email,
+      phone: input.phone,
+      nationalId: input.idCard,
+      emergencyContactName: input.emergencyContact.name,
+      emergencyContactPhone: input.emergencyContact.phone,
+    };
+    if (resolvedOrganizationId) {
+      body.organizationId = resolvedOrganizationId;
+    }
+
     const created = await apiRequest<ApiTenant>("/tenants", {
       method: "POST",
-      body: {
-        firstName: nameParts[0] ?? "",
-        lastName: nameParts.slice(1).join(" "),
-        email: input.email,
-        phone: input.phone,
-        nationalId: input.idCard,
-        emergencyContactName: input.emergencyContact.name,
-        emergencyContactPhone: input.emergencyContact.phone,
-      },
+      body,
     });
 
     if (input.roomId) {
@@ -771,14 +852,11 @@ export async function updateTenantContact(
     const existing = await apiRequest<ApiTenant>(
       `/tenants/${encodeURIComponent(tenantId)}`,
     );
-    const nameParts = `${existing.firstName} ${existing.lastName}`
-      .trim()
-      .split(/\s+/u);
     await apiRequest(`/tenants/${encodeURIComponent(tenantId)}`, {
       method: "PUT",
       body: {
-        firstName: nameParts[0] ?? "",
-        lastName: nameParts.slice(1).join(" "),
+        firstName: existing.firstName || "-",
+        lastName: existing.lastName || "-",
         email: contact.email,
         phone: contact.phone,
         nationalId: existing.nationalId,
@@ -852,11 +930,11 @@ export async function updateRoomStatus(
   }
 }
 
-async function getDashboardSummary(): Promise<ApiDashboardSummary> {
-  return apiRequest<ApiDashboardSummary>("/dashboard/summary", {
+const getDashboardSummary = cache(() =>
+  apiRequest<ApiDashboardSummary>("/dashboard/summary", {
     cache: "no-store",
-  });
-}
+  }),
+);
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const [summary, rooms, tenants] = await Promise.all([
@@ -916,7 +994,10 @@ export async function getRevenueTrend(): Promise<RevenuePoint[]> {
     .reduce((total, room) => total + room.monthlyRate, 0);
   return trend.map((point, index) => {
     const month = new Date(current.getFullYear(), current.getMonth() - (trend.length - index - 1), 1);
-    const period = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+    const fallbackPeriod = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+    const period =
+      point.period ??
+      (/^\d{4}-\d{2}$/u.test(point.label) ? point.label : fallbackPeriod);
     return {
       label: point.label,
       period,

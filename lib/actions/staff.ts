@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 
 import { ApiError, apiRequest } from "@/lib/api/client";
+import { resolveDefaultOrganizationId } from "@/lib/api/dormflow";
 import { t } from "@/lib/i18n";
 import { verifySession } from "@/lib/session";
 
@@ -50,7 +51,7 @@ export async function createStaffAction(
   _previousState: StaffActionState,
   formData: FormData,
 ): Promise<StaffActionState> {
-  await verifySession();
+  const session = await verifySession();
 
   const firstName = readField(formData, "firstName");
   const lastName = readField(formData, "lastName");
@@ -77,11 +78,25 @@ export async function createStaffAction(
     return { status: "error", message: t.settings.staff.permissionError };
   }
 
+  const organizationId = await resolveDefaultOrganizationId(
+    readField(formData, "organizationId") || session.user.organizationId,
+  );
+
   let user: { id: string };
   try {
+    const body: Record<string, unknown> = {
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+    };
+    if (organizationId) {
+      body.organizationId = organizationId;
+    }
     user = await apiRequest<{ id: string }>("/users", {
       method: "POST",
-      body: { firstName, lastName, email, password, phone },
+      body,
     });
   } catch (error) {
     unstable_rethrow(error);

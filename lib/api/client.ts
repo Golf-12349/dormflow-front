@@ -173,6 +173,23 @@ async function readPayload(response: Response): Promise<unknown> {
   }
 }
 
+/** Extracts a human-readable message from an error envelope, preferring field-level validation details. */
+function formatEnvelopeError(
+  envelope: ApiEnvelope<unknown> | undefined,
+): string | undefined {
+  if (!envelope) return undefined;
+  const fieldMessages = envelope.errors
+    ? Object.values(envelope.errors)
+        .flat()
+        .map((msg) => msg.trim())
+        .filter(Boolean)
+    : [];
+  if (fieldMessages.length > 0) {
+    return fieldMessages.join(" ");
+  }
+  return envelope.message || undefined;
+}
+
 /** Builds the typed error for a failing response. */
 async function toApiError(response: Response): Promise<ApiError> {
   const payload = await readPayload(response);
@@ -188,7 +205,7 @@ async function toApiError(response: Response): Promise<ApiError> {
       ? responseText
       : `Request failed with status ${response.status}.`;
 
-  return new ApiError(envelope?.message || fallback, {
+  return new ApiError(formatEnvelopeError(envelope) || fallback, {
     status: response.status,
     errors: envelope?.errors,
     traceId: envelope?.traceId,
@@ -201,11 +218,14 @@ async function unwrapResponse<T>(response: Response): Promise<T> {
 
   if (isEnvelope(payload)) {
     if (!payload.success) {
-      throw new ApiError(payload.message || DEFAULT_ERROR_MESSAGE, {
-        status: response.status,
-        errors: payload.errors,
-        traceId: payload.traceId,
-      });
+      throw new ApiError(
+        formatEnvelopeError(payload) || DEFAULT_ERROR_MESSAGE,
+        {
+          status: response.status,
+          errors: payload.errors,
+          traceId: payload.traceId,
+        },
+      );
     }
 
     // Absent `data` (publish/pickup) resolves to `undefined`, not an error.

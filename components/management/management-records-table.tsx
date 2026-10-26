@@ -10,6 +10,7 @@ import {
   MANAGEMENT_UPDATE_FIELDS,
   managementFieldList,
   type ManagementField,
+  type ManagementSelectOption,
 } from "@/lib/management-workflows";
 import {
   ManagementReportExportForm,
@@ -52,20 +53,38 @@ function isInternalField(key: string, items: Record<string, unknown>[]): boolean
   });
 }
 
+function enrichFields(
+  fields: ManagementField[] | undefined,
+  lookupOptions?: Record<string, ManagementSelectOption[]>,
+): ManagementField[] | undefined {
+  if (!fields || !lookupOptions) return fields;
+  return fields.map((field) => {
+    const selectOptions = lookupOptions[field.name];
+    return selectOptions && selectOptions.length > 0
+      ? { ...field, selectOptions }
+      : field;
+  });
+}
+
 export function ManagementRecordsTable({
   group,
   module,
   records,
   relatedRecords,
   reportPeriod,
+  lookupOptions,
 }: {
   group: ManagementGroup;
   module: ManagementModule;
   records: ManagementRecords;
   relatedRecords?: ManagementRecords;
   reportPeriod?: { periodFrom: string; periodTo: string };
+  lookupOptions?: Record<string, ManagementSelectOption[]>;
 }) {
-  const createFields = MANAGEMENT_CREATE_FIELDS[module.slug];
+  const createFields = enrichFields(
+    MANAGEMENT_CREATE_FIELDS[module.slug],
+    lookupOptions,
+  );
   const operations = MANAGEMENT_OPERATIONS[module.slug] ?? [];
   const operationLabels = t.management.workflows as unknown as Record<string, string>;
   const reportToDefault = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
@@ -211,14 +230,23 @@ export function ManagementRecordsTable({
                                   compact
                                   resource={module.slug}
                                   operation="update"
-                                  fields={MANAGEMENT_UPDATE_FIELDS[module.slug]}
+                                  fields={
+                                    enrichFields(
+                                      MANAGEMENT_UPDATE_FIELDS[module.slug],
+                                      lookupOptions,
+                                    ) ?? []
+                                  }
                                   recordId={recordId}
                                   values={item}
                                   submitLabel={t.management.workflows.update}
                                 />
                               ) : null}
                               {operations.map((operation) => {
-                                let fields = managementFieldList(module.slug, operation);
+                                let fields =
+                                  enrichFields(
+                                    managementFieldList(module.slug, operation),
+                                    lookupOptions,
+                                  ) ?? [];
                                 if (operation === "status" && module.slug === "maintenance-requests") {
                                   fields = [
                                     {

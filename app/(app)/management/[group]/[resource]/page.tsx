@@ -4,7 +4,11 @@ import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { ManagementRecordsTable } from "@/components/management/management-records-table";
-import { getManagementRecords, getOutstandingInvoiceRecords } from "@/lib/api/management";
+import {
+  getManagementLookupOptions,
+  getManagementRecords,
+  getOutstandingInvoiceRecords,
+} from "@/lib/api/management";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
 import {
@@ -43,6 +47,7 @@ export default async function ManagementModulePage({
 
   let records;
   let outstandingRecords;
+  let lookupOptions;
   const filters = await searchParams;
   const fromValue = filters?.periodFrom;
   const toValue = filters?.periodTo;
@@ -71,7 +76,10 @@ export default async function ManagementModulePage({
         getOutstandingInvoiceRecords(),
       ]);
     } else {
-      records = await getManagementRecords(result.module);
+      [records, lookupOptions] = await Promise.all([
+        getManagementRecords(result.module),
+        getManagementLookupOptions(result.module.slug),
+      ]);
     }
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
@@ -118,6 +126,7 @@ export default async function ManagementModulePage({
       records={records}
       relatedRecords={outstandingRecords}
       reportPeriod={reportPeriod}
+      lookupOptions={lookupOptions}
     />
   );
 }
