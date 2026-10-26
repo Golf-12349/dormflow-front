@@ -2,12 +2,13 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Pencil, Plus, Users } from "lucide-react";
 
 import {
   assignStaffRolesAction,
   changeStaffStatusAction,
   createStaffAction,
+  updateStaffProfileAction,
 } from "@/lib/actions/staff";
 import { t } from "@/lib/i18n";
 
@@ -41,6 +42,7 @@ export function StaffManagement({
   organizations: Array<{ id: string; name: string; code: string }>;
 }) {
   const [openCreate, setOpenCreate] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [createState, createFormAction, createPending] = useActionState(
     createStaffAction,
     INITIAL_STATE,
@@ -53,9 +55,18 @@ export function StaffManagement({
     changeStaffStatusAction,
     INITIAL_STATE,
   );
+  const [profileState, profileFormAction, profilePending] = useActionState(
+    updateStaffProfileAction,
+    INITIAL_STATE,
+  );
 
-  const feedback =
-    statusState.message ? statusState : roleState.message ? roleState : createState;
+  const feedback = profileState.message
+    ? profileState
+    : statusState.message
+      ? statusState
+      : roleState.message
+        ? roleState
+        : createState;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -219,14 +230,59 @@ export function StaffManagement({
                 const isSelf = user.id === currentUserId;
                 const isActive = user.status.toLowerCase() === "active";
                 const primaryRole = user.roles[0] ?? "Staff";
+                const isEditing = editingUserId === user.id;
                 return (
-                  <tr key={user.id}>
+                  <tr key={user.id} className="align-top">
                     <td className="py-2.5 pr-3 font-medium text-slate-900">
-                      {`${user.firstName} ${user.lastName}`.trim()}
-                      {isSelf ? (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-normal text-slate-600">
-                          {t.settings.staff.selfAccount}
-                        </span>
+                      <div>
+                        {`${user.firstName} ${user.lastName}`.trim()}
+                        {isSelf ? (
+                          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-normal text-slate-600">
+                            {t.settings.staff.selfAccount}
+                          </span>
+                        ) : null}
+                      </div>
+                      {isEditing ? (
+                        <form
+                          action={profileFormAction}
+                          className="mt-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2"
+                        >
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input
+                            required
+                            name="firstName"
+                            defaultValue={user.firstName}
+                            placeholder={t.settings.staff.firstName}
+                            className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                          />
+                          <input
+                            required
+                            name="lastName"
+                            defaultValue={user.lastName}
+                            placeholder={t.settings.staff.lastName}
+                            className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                          />
+                          <input
+                            name="phone"
+                            defaultValue={user.phone ?? ""}
+                            placeholder={t.settings.phone}
+                            className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                          />
+                          <button
+                            type="submit"
+                            disabled={profilePending}
+                            className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            {t.common.save}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingUserId(null)}
+                            className="rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-200"
+                          >
+                            {t.settings.staff.cancel}
+                          </button>
+                        </form>
                       ) : null}
                     </td>
                     <td className="px-3 py-2.5 text-slate-600">{user.email}</td>
@@ -247,54 +303,72 @@ export function StaffManagement({
                       </span>
                     </td>
                     <td className="py-2.5 pl-3 text-right">
-                      {!isSelf ? (
-                        <div className="inline-flex items-center gap-2">
-                          <form
-                            action={roleFormAction}
-                            className="inline-flex items-center gap-1"
-                          >
-                            <input type="hidden" name="userId" value={user.id} />
-                            <select
-                              name="roles"
-                              defaultValue={primaryRole}
-                              aria-label={t.settings.staff.changeRole}
-                              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                      <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingUserId(isEditing ? null : user.id)
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <Pencil className="size-3" aria-hidden="true" />
+                          {t.settings.staff.editProfile}
+                        </button>
+                        {!isSelf ? (
+                          <>
+                            <form
+                              action={roleFormAction}
+                              className="inline-flex items-center gap-1"
                             >
-                              {ROLE_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="submit"
-                              disabled={rolePending}
-                              className="rounded-lg border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-                            >
-                              {t.settings.staff.changeRole}
-                            </button>
-                          </form>
-                          <form action={statusFormAction}>
-                            <input type="hidden" name="userId" value={user.id} />
-                            <input
-                              type="hidden"
-                              name="status"
-                              value={isActive ? "Inactive" : "Active"}
-                            />
-                            <button
-                              type="submit"
-                              disabled={statusPending}
-                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                            >
-                              {isActive
-                                ? t.settings.staff.deactivate
-                                : t.settings.staff.activate}
-                            </button>
-                          </form>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                              <input
+                                type="hidden"
+                                name="userId"
+                                value={user.id}
+                              />
+                              <select
+                                name="roles"
+                                defaultValue={primaryRole}
+                                aria-label={t.settings.staff.changeRole}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                              >
+                                {ROLE_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="submit"
+                                disabled={rolePending}
+                                className="rounded-lg border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                              >
+                                {t.settings.staff.changeRole}
+                              </button>
+                            </form>
+                            <form action={statusFormAction}>
+                              <input
+                                type="hidden"
+                                name="userId"
+                                value={user.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="status"
+                                value={isActive ? "Inactive" : "Active"}
+                              />
+                              <button
+                                type="submit"
+                                disabled={statusPending}
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                {isActive
+                                  ? t.settings.staff.deactivate
+                                  : t.settings.staff.activate}
+                              </button>
+                            </form>
+                          </>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );

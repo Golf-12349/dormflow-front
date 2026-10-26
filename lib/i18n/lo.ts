@@ -549,6 +549,13 @@ export const lo = {
       noBuildingsHint:
         "ຍັງບໍ່ມີຂໍ້ມູນອາຄານ, ຊັ້ນ ຫຼື ປະເພດຫ້ອງ — ກະລຸນາສ້າງທີ່ເມນູ ຈັດການຫໍພັກ ກ່ອນ.",
     },
+    edit: {
+      trigger: "ແກ້ໄຂຂໍ້ມູນຫ້ອງ",
+      cancel: "ຍົກເລີກ",
+      submit: "ບັນທຶກການແກ້ໄຂ",
+      saving: "ກຳລັງບັນທຶກ…",
+      success: (roomNumber: string) => `ອັບເດດຂໍ້ມູນຫ້ອງ ${roomNumber} ແລ້ວ.`,
+    },
     /** Success messages; one per allowed target status. */
     statusChangedToMaintenance: (roomNumber: string) =>
       `ຫ້ອງ ${roomNumber} ຖືກໝາຍເປັນ ສ້ອມແປງ ແລ້ວ.`,
@@ -863,6 +870,16 @@ export const lo = {
       submit: "ບັນທຶກ",
       saving: "ກຳລັງບັນທຶກ…",
       success: (name: string) => `ບັນທຶກຂໍ້ມູນຕິດຕໍ່ຂອງ ${name} ແລ້ວ.`,
+    },
+    assignRoom: {
+      sectionTitle: "ຈັດສັນຫ້ອງພັກ / ເຂົ້າພັກ",
+      hint: "ເລືອກຫ້ອງວ່າງ ແລະ ວັນທີສັນຍາ ເພື່ອເປີດສັນຍາເຊົ່າໃຫ້ຜູ້ເຊົ່າລາຍນີ້.",
+      trigger: "ຈັດສັນຫ້ອງພັກ",
+      submit: "ຢືນຢັນການເຂົ້າພັກ",
+      saving: "ກຳລັງບັນທຶກ…",
+      noVacantRooms: "ຍັງບໍ່ມີຫ້ອງວ່າງສຳລັບຈັດສັນ.",
+      success: (name: string, roomNumber: string) =>
+        `ຈັດສັນຫ້ອງ ${roomNumber} ໃຫ້ ${name} ແລ້ວ.`,
     },
     /** 6.5 — server-side validation + data-layer errors for both mutations. */
     errors: {

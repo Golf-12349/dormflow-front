@@ -1166,3 +1166,119 @@ export async function getRecentActivities(limit = 6): Promise<Activity[]> {
 export async function getSettings(): Promise<ApiSetting[]> {
   return getAll<ApiSetting>("/settings");
 }
+
+
+interface ApiRoomDetail extends ApiRoom {
+  floorId: string;
+  roomTypeId: string;
+  depositAmount: number;
+  maximumOccupants: number;
+  floorPlanX?: number | null;
+  floorPlanY?: number | null;
+  floorPlanWidth?: number | null;
+  floorPlanHeight?: number | null;
+}
+
+export async function updateRoomDetails(
+  roomId: string,
+  input: {
+    roomNumber: string;
+    monthlyRent: number;
+    description?: string | null;
+  },
+): Promise<{ success: true; room: Room } | { success: false; error: string }> {
+  try {
+    const existing = await apiRequest<ApiRoomDetail>(
+      `/rooms/${encodeURIComponent(roomId)}`,
+      { cache: "no-store" },
+    );
+    const updated = await apiRequest<ApiRoom>(
+      `/rooms/${encodeURIComponent(roomId)}`,
+      {
+        method: "PUT",
+        body: {
+          floorId: existing.floorId,
+          roomTypeId: existing.roomTypeId,
+          roomNumber: input.roomNumber.trim(),
+          monthlyRent: input.monthlyRent,
+          depositAmount: existing.depositAmount ?? 0,
+          maximumOccupants: existing.maximumOccupants ?? 1,
+          description: input.description?.trim() || null,
+          floorPlanX: existing.floorPlanX ?? null,
+          floorPlanY: existing.floorPlanY ?? null,
+          floorPlanWidth: existing.floorPlanWidth ?? null,
+          floorPlanHeight: existing.floorPlanHeight ?? null,
+        },
+      },
+    );
+    const contracts = await getApiContracts();
+    return { success: true, room: mapRoom(updated, contracts) };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function assignTenantToRoom(input: {
+  tenantId: string;
+  roomId: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  depositAmount?: number | null;
+}): Promise<
+  { success: true; tenant: Tenant; room: Room }
+  | { success: false; error: string }
+> {
+  try {
+    const room = await apiRequest<ApiRoom>(
+      `/rooms/${encodeURIComponent(input.roomId)}`,
+    );
+    const defaultStart = new Date();
+    const defaultEnd = new Date(defaultStart);
+    defaultEnd.setFullYear(defaultEnd.getFullYear() + 1);
+    defaultEnd.setDate(defaultEnd.getDate() - 1);
+
+    const startDateStr =
+      input.startDate?.trim() || defaultStart.toISOString().slice(0, 10);
+    const endDateStr =
+      input.endDate?.trim() || defaultEnd.toISOString().slice(0, 10);
+    const contractBody: Record<string, unknown> = {
+      roomId: room.id,
+      tenantId: input.tenantId,
+      startDate: startDateStr,
+      endDate: endDateStr,
+    };
+    if (
+      typeof input.depositAmount === "number" &&
+      Number.isFinite(input.depositAmount) &&
+      input.depositAmount >= 0
+    ) {
+      contractBody.depositAmount = input.depositAmount;
+    }
+
+    const contract = await apiRequest<ApiContract>("/contracts", {
+      method: "POST",
+      body: contractBody,
+    });
+    await apiRequest(`/contracts/${contract.id}/activate`, { method: "POST" });
+
+    const [tenant, updatedRoom] = await Promise.all([
+      getTenantById(input.tenantId),
+      getRoomById(input.roomId),
+    ]);
+    if (!tenant || !updatedRoom) {
+      return {
+        success: false,
+        error: "The lease contract was created but could not be reloaded.",
+      };
+    }
+    return { success: true, tenant, room: updatedRoom };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+}

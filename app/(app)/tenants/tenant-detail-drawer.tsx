@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import {
+  assignTenantRoomAction,
   checkOutTenantAction,
   updateTenantContactAction,
 } from "@/lib/actions/tenants";
@@ -40,6 +41,8 @@ interface TenantDetailDrawerProps {
   tenant: Tenant;
   /** The tenant's assigned room, or `null` when none is assigned yet. */
   room: Room | null;
+  /** Vacant rooms available for check-in when the tenant has no active room. */
+  vacantRooms?: Room[];
   /** This tenant's invoices, newest first (pre-sorted by the table). */
   invoices: Invoice[];
   /** Closes the drawer; the parent returns focus to the row that opened it. */
@@ -102,6 +105,7 @@ const DD_CLASSES = "font-medium text-slate-900";
 export function TenantDetailDrawer({
   tenant,
   room,
+  vacantRooms = [],
   invoices,
   onClose,
   nowMs,
@@ -120,6 +124,13 @@ export function TenantDetailDrawer({
   const [isConfirmingCheckOut, setIsConfirmingCheckOut] = useState(false);
   const [checkOutState, checkOutFormAction, checkOutPending] =
     useActionState(checkOutTenantAction, INITIAL_CHECK_OUT_STATE);
+
+  /** Check-in / Assign Room for tenants without an active room. */
+  const [isAssigningRoom, setIsAssigningRoom] = useState(false);
+  const [assignState, assignFormAction, assignPending] = useActionState(
+    assignTenantRoomAction,
+    INITIAL_CHECK_OUT_STATE,
+  );
 
   /** Focus moves into the drawer as soon as it opens. */
   useEffect(() => {
@@ -350,9 +361,20 @@ export function TenantDetailDrawer({
 
           {/* Room info — number via the `rooms` prop, or 6.1's no-room placeholder */}
           <section>
-            <h3 className={SECTION_TITLE}>
-              {t.tenants.profile.sections.room}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={SECTION_TITLE}>
+                {t.tenants.profile.sections.room}
+              </h3>
+              {!room && !isAssigningRoom ? (
+                <button
+                  type="button"
+                  onClick={() => setIsAssigningRoom(true)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                >
+                  {t.tenants.assignRoom.trigger}
+                </button>
+              ) : null}
+            </div>
             <dl className="mt-3 space-y-2 text-sm">
               <div className={ROW_CLASSES}>
                 <dt className={DT_CLASSES}>{t.tenants.fields.room}</dt>
@@ -371,6 +393,133 @@ export function TenantDetailDrawer({
                 </div>
               ) : null}
             </dl>
+
+            {!room && isAssigningRoom ? (
+              vacantRooms.length === 0 ? (
+                <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  {t.tenants.assignRoom.noVacantRooms}
+                </p>
+              ) : (
+                <form
+                  action={assignFormAction}
+                  className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                  noValidate
+                >
+                  <input type="hidden" name="tenantId" value={tenant.id} />
+                  <p className="text-xs text-slate-600">
+                    {t.tenants.assignRoom.hint}
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">
+                      {t.tenants.fields.room} *
+                    </label>
+                    <select
+                      required
+                      name="roomId"
+                      defaultValue={vacantRooms[0]?.id ?? ""}
+                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      {vacantRooms.map((vacantRoom) => (
+                        <option key={vacantRoom.id} value={vacantRoom.id}>
+                          {t.rooms.roomTitle(vacantRoom.number)} ·{" "}
+                          {formatCurrency(vacantRoom.monthlyRate)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700">
+                        {t.tenants.add.startDate}
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        defaultValue={new Date(nowMs).toISOString().slice(0, 10)}
+                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700">
+                        {t.tenants.add.endDate}
+                      </label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        defaultValue={new Date(nowMs + 364 * DAY_MS)
+                          .toISOString()
+                          .slice(0, 10)}
+                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">
+                      {t.tenants.add.depositAmount} (LAK)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="depositAmount"
+                      placeholder="0"
+                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsAssigningRoom(false)}
+                      className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                    >
+                      {t.tenants.cancel}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={assignPending}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+                    >
+                      {assignPending ? (
+                        <>
+                          <Loader2
+                            className="size-3.5 animate-spin"
+                            aria-hidden="true"
+                          />
+                          <span>{t.tenants.assignRoom.saving}</span>
+                        </>
+                      ) : (
+                        <span>{t.tenants.assignRoom.submit}</span>
+                      )}
+                    </button>
+                  </div>
+                  {assignState.status !== "idle" && assignState.message ? (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className={cn(
+                        "flex items-start gap-2 rounded-xl border p-3 text-xs",
+                        assignState.status === "success"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-rose-200 bg-rose-50 text-rose-700",
+                      )}
+                    >
+                      {assignState.status === "success" ? (
+                        <CheckCircle2
+                          className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <AlertCircle
+                          className="mt-0.5 size-4 shrink-0 text-rose-500"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <p>{assignState.message}</p>
+                    </div>
+                  ) : null}
+                </form>
+              )
+            ) : null}
           </section>
 
           {/* Lease dates + 6.4 progress bar / "expiring soon" highlight */}

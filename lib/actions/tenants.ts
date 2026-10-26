@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 
 import { t } from "@/lib/i18n";
 import {
+  assignTenantToRoom,
   checkOutTenant,
   createTenant,
   getRoomById,
@@ -315,6 +316,74 @@ export async function checkOutTenantAction(
   return {
     status: "success",
     message: t.tenants.checkOut.success(
+      result.tenant.fullName,
+      result.room.number,
+    ),
+  };
+}
+
+export async function assignTenantRoomAction(
+  _prevState: CheckOutTenantFormState,
+  formData: FormData,
+): Promise<CheckOutTenantFormState> {
+  const tenantId = readField(formData, "tenantId");
+  const roomId = readField(formData, "roomId");
+  const startDate = readField(formData, "startDate") || null;
+  const endDate = readField(formData, "endDate") || null;
+  const rawDepositAmount = readField(formData, "depositAmount");
+  const depositAmount =
+    rawDepositAmount !== "" &&
+    Number.isFinite(Number(rawDepositAmount)) &&
+    Number(rawDepositAmount) >= 0
+      ? Number(rawDepositAmount)
+      : null;
+
+  if (!tenantId) {
+    return { status: "error", message: t.tenants.errors.tenantIdRequired };
+  }
+  if (!roomId) {
+    return { status: "error", message: t.tenants.errors.roomNotFound };
+  }
+
+  const [tenant, room] = await Promise.all([
+    getTenantById(tenantId),
+    getRoomById(roomId),
+  ]);
+  if (!tenant) {
+    return { status: "error", message: t.tenants.errors.tenantNotFound };
+  }
+  if (!room) {
+    return { status: "error", message: t.tenants.errors.roomNotFound };
+  }
+  if (room.status !== "vacant") {
+    return {
+      status: "error",
+      message: t.tenants.errors.roomNotVacant(room.number),
+    };
+  }
+
+  const result = await assignTenantToRoom({
+    tenantId,
+    roomId,
+    startDate,
+    endDate,
+    depositAmount,
+  });
+
+  if (!result.success) {
+    return { status: "error", message: localizeDataLayerError(result.error) };
+  }
+
+  revalidatePath("/tenants");
+  revalidatePath("/rooms");
+  revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/management");
+  revalidatePath("/management/residents/contracts");
+
+  return {
+    status: "success",
+    message: t.tenants.assignRoom.success(
       result.tenant.fullName,
       result.room.number,
     ),

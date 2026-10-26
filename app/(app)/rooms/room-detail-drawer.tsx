@@ -1,16 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import {
   AlertCircle,
   Check,
   CheckCircle2,
   Loader2,
+  Pencil,
+  Save,
   Wrench,
   X,
 } from "lucide-react";
 
-import { changeRoomStatusAction } from "@/lib/actions/rooms";
+import {
+  changeRoomStatusAction,
+  updateRoomDetailsAction,
+} from "@/lib/actions/rooms";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
@@ -83,8 +88,15 @@ export function RoomDetailDrawer({
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
+  const [isEditingRoom, setIsEditingRoom] = useState(false);
+
   const [statusState, formAction, isPending] = useActionState(
     changeRoomStatusAction,
+    INITIAL_ROOM_STATUS_STATE,
+  );
+
+  const [editState, editFormAction, isEditPending] = useActionState(
+    updateRoomDetailsAction,
     INITIAL_ROOM_STATUS_STATE,
   );
 
@@ -204,33 +216,147 @@ export function RoomDetailDrawer({
 
           {/* Rent, size and the rates in use */}
           <section>
-            <h3 className={SECTION_TITLE}>
-              {t.rooms.sections.rentAndUtilities}
-            </h3>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>{t.rooms.fields.monthlyRent}</dt>
-                <dd className={DD_CLASSES}>
-                  {formatCurrency(room.monthlyRate)}
-                </dd>
-              </div>
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>{t.rooms.fields.size}</dt>
-                <dd className={DD_CLASSES}>{room.sizeSqm} m²</dd>
-              </div>
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>{t.rooms.fields.electricity}</dt>
-                <dd className={DD_CLASSES}>
-                  {formatUnitPrice(rates.electricPerKwh)} / kWh
-                </dd>
-              </div>
-              <div className={ROW_CLASSES}>
-                <dt className={DT_CLASSES}>{t.rooms.fields.water}</dt>
-                <dd className={DD_CLASSES}>
-                  {formatUnitPrice(rates.waterPerCubicMeter)} / m³
-                </dd>
-              </div>
-            </dl>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={SECTION_TITLE}>
+                {t.rooms.sections.rentAndUtilities}
+              </h3>
+              {!isEditingRoom ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingRoom(true)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+                >
+                  <Pencil className="size-3" aria-hidden="true" />
+                  {t.rooms.edit.trigger}
+                </button>
+              ) : null}
+            </div>
+
+            {isEditingRoom ? (
+              <form
+                action={editFormAction}
+                className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                noValidate
+              >
+                <input type="hidden" name="roomId" value={room.id} />
+                <div>
+                  <label className="block text-xs font-medium text-slate-700">
+                    {t.rooms.add.roomNumber} *
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    name="roomNumber"
+                    defaultValue={room.number}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700">
+                    {t.rooms.fields.monthlyRent} (LAK) *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    step="1"
+                    name="monthlyRent"
+                    defaultValue={room.monthlyRate}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700">
+                    {t.rooms.add.description}
+                  </label>
+                  <input
+                    type="text"
+                    name="description"
+                    defaultValue={room.note ?? ""}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingRoom(false)}
+                    className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                  >
+                    {t.rooms.edit.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isEditPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+                  >
+                    {isEditPending ? (
+                      <>
+                        <Loader2
+                          className="size-3.5 animate-spin"
+                          aria-hidden="true"
+                        />
+                        <span>{t.rooms.edit.saving}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="size-3.5" aria-hidden="true" />
+                        <span>{t.rooms.edit.submit}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {editState.status !== "idle" && editState.message ? (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                      "flex items-start gap-2 rounded-xl border p-3 text-xs",
+                      editState.status === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-rose-200 bg-rose-50 text-rose-700",
+                    )}
+                  >
+                    {editState.status === "success" ? (
+                      <CheckCircle2
+                        className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <AlertCircle
+                        className="mt-0.5 size-4 shrink-0 text-rose-500"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <p>{editState.message}</p>
+                  </div>
+                ) : null}
+              </form>
+            ) : (
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>{t.rooms.fields.monthlyRent}</dt>
+                  <dd className={DD_CLASSES}>
+                    {formatCurrency(room.monthlyRate)}
+                  </dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>{t.rooms.fields.size}</dt>
+                  <dd className={DD_CLASSES}>{room.sizeSqm} m²</dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>{t.rooms.fields.electricity}</dt>
+                  <dd className={DD_CLASSES}>
+                    {formatUnitPrice(rates.electricPerKwh)} / kWh
+                  </dd>
+                </div>
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>{t.rooms.fields.water}</dt>
+                  <dd className={DD_CLASSES}>
+                    {formatUnitPrice(rates.waterPerCubicMeter)} / m³
+                  </dd>
+                </div>
+              </dl>
+            )}
           </section>
 
           {/* Amenities */}

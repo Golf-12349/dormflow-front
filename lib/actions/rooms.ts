@@ -11,7 +11,12 @@
 import { revalidatePath } from "next/cache";
 
 import { t } from "@/lib/i18n";
-import { createRoom, getRoomById, updateRoomStatus } from "@/lib/api/dormflow";
+import {
+  createRoom,
+  getRoomById,
+  updateRoomDetails,
+  updateRoomStatus,
+} from "@/lib/api/dormflow";
 import { ROOM_STATUS_LABELS } from "@/lib/utils";
 import type { RoomStatus, RoomStatusFormState } from "@/types";
 
@@ -220,5 +225,51 @@ export async function changeRoomStatusAction(
   return {
     status: "success",
     message: successMessage,
+  };
+}
+
+export async function updateRoomDetailsAction(
+  _prevState: RoomStatusFormState,
+  formData: FormData,
+): Promise<RoomStatusFormState> {
+  const roomId = String(formData.get("roomId") ?? "").trim();
+  const roomNumber = String(formData.get("roomNumber") ?? "").trim();
+  const rawMonthlyRent = String(formData.get("monthlyRent") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!roomId) {
+    return { status: "error", message: t.rooms.errors.roomIdRequired };
+  }
+  if (!roomNumber) {
+    return { status: "error", message: t.rooms.errors.roomNumberRequired };
+  }
+  const monthlyRent =
+    rawMonthlyRent === "" ? Number.NaN : Number(rawMonthlyRent);
+  if (!Number.isFinite(monthlyRent) || monthlyRent < 0) {
+    return { status: "error", message: t.rooms.errors.invalidRent };
+  }
+
+  const result = await updateRoomDetails(roomId, {
+    roomNumber,
+    monthlyRent,
+    description,
+  });
+
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizeDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/rooms");
+  revalidatePath("/dashboard");
+  revalidatePath("/tenants");
+  revalidatePath("/billing");
+  revalidatePath("/management");
+
+  return {
+    status: "success",
+    message: t.rooms.edit.success(result.room.number),
   };
 }

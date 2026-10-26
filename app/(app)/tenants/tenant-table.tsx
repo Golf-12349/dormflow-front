@@ -440,6 +440,7 @@ export function TenantTable({
           key={selectedTenant.id}
           tenant={selectedTenant}
           room={selectedRoom}
+          vacantRooms={rooms.filter((r) => r.status === "vacant")}
           invoices={selectedInvoices}
           nowMs={selected.nowMs}
           onClose={closeTenant}
