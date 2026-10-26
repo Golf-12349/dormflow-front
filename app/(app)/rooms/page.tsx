@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
 import {
+  getAllUtilityReadingsGroupedByRoom,
   getRoomCreationOptions,
   getRooms,
   getTenants,
   getUtilityRates,
-  getUtilityReadingsByRoom,
 } from "@/lib/api/dormflow";
 import type { Tenant, UtilityReading } from "@/types";
 import { AddRoomForm } from "./add-room-form";
@@ -25,26 +25,21 @@ export const metadata: Metadata = {
  * history and the utility rates — is fetched here and passed down as plain props.
  */
 export default async function RoomsPage() {
-  const [rooms, tenants, rates, roomCreationOptions] = await Promise.all([
-    getRooms(),
-    getTenants(),
-    getUtilityRates(),
-    getRoomCreationOptions(),
-  ]);
+  const [rooms, tenants, rates, roomCreationOptions, groupedReadings] =
+    await Promise.all([
+      getRooms(),
+      getTenants(),
+      getUtilityRates(),
+      getRoomCreationOptions(),
+      getAllUtilityReadingsGroupedByRoom(),
+    ]);
 
   /**
-   * Meter history for every room, pre-loaded in one parallel pass. The backend
-   * currently exposes room-level history, so load those requests concurrently.
+   * Meter history for every room, pre-loaded in one bulk query.
    */
-  const readingsByRoomId: Record<string, UtilityReading[]> =
-    Object.fromEntries(
-      await Promise.all(
-        rooms.map(
-          async (room) =>
-            [room.id, await getUtilityReadingsByRoom(room.id)] as const,
-        ),
-      ),
-    );
+  const readingsByRoomId: Record<string, UtilityReading[]> = Object.fromEntries(
+    rooms.map((room) => [room.id, groupedReadings[room.id] ?? []] as const),
+  );
 
   /** Tenant lookup by room id, used by the detail drawer (5.6). */
   const tenantsByRoomId: Record<string, Tenant> = {};

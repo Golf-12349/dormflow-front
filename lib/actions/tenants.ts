@@ -184,6 +184,9 @@ export async function createTenantAction(
 
   revalidatePath("/tenants");
   revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/management");
+  revalidatePath("/management/residents/contracts");
   // Creating a contract changes the room's status, so refresh the rooms screen.
   if (result.tenant.roomId) {
     revalidatePath("/rooms");
@@ -303,6 +306,9 @@ export async function checkOutTenantAction(
 
   revalidatePath("/tenants");
   revalidatePath("/dashboard");
+  revalidatePath("/billing");
+  revalidatePath("/management");
+  revalidatePath("/management/residents/contracts");
   // The freed room leaves the rooms screen as well as the dashboard counts.
   revalidatePath("/rooms");
 

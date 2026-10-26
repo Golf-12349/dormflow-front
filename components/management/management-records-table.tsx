@@ -28,12 +28,47 @@ function labelFor(key: string): string {
     .replace(/\b\w/gu, (character) => character.toUpperCase());
 }
 
-function displayValue(value: unknown): string {
+const RESOLVABLE_FK_KEYS = new Set([
+  "roomId",
+  "tenantId",
+  "dormitoryId",
+  "buildingId",
+  "floorId",
+  "roomTypeId",
+  "contractId",
+  "invoiceId",
+  "paymentId",
+  "assignedToUserId",
+  "assignedTechnicianId",
+]);
+
+function resolveLookupOption(
+  key: string,
+  value: string,
+  lookupOptions?: Record<string, ManagementSelectOption[]>,
+): string | null {
+  if (!lookupOptions) return null;
+  const list =
+    lookupOptions[key] ??
+    (key === "assignedTechnicianId" ? lookupOptions.assignedToUserId : undefined);
+  if (!list) return null;
+  return list.find((opt) => opt.value === value)?.label ?? null;
+}
+
+function displayValue(
+  value: unknown,
+  key?: string,
+  lookupOptions?: Record<string, ManagementSelectOption[]>,
+): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") {
     return value ? t.management.table.yes : t.management.table.no;
   }
   if (typeof value === "string") {
+    if (key) {
+      const resolved = resolveLookupOption(key, value, lookupOptions);
+      if (resolved) return resolved;
+    }
     return value.length > 80 ? `${value.slice(0, 77)}...` : value;
   }
   if (typeof value === "number") return new Intl.NumberFormat().format(value);
@@ -42,8 +77,19 @@ function displayValue(value: unknown): string {
   return String(value);
 }
 
-function isInternalField(key: string, items: Record<string, unknown>[]): boolean {
-  if (["id", "createdAt", "updatedAt"].includes(key)) return true;
+function isInternalField(
+  key: string,
+  items: Record<string, unknown>[],
+  lookupOptions?: Record<string, ManagementSelectOption[]>,
+): boolean {
+  if (["id", "organizationId", "createdAt", "updatedAt"].includes(key)) return true;
+  if (RESOLVABLE_FK_KEYS.has(key) && lookupOptions) {
+    const hasLookup =
+      (lookupOptions[key]?.length ?? 0) > 0 ||
+      (key === "assignedTechnicianId" &&
+        (lookupOptions.assignedToUserId?.length ?? 0) > 0);
+    if (hasLookup) return false;
+  }
   return items.some((item) => {
     const value = item[key];
     return (
@@ -93,15 +139,15 @@ export function ManagementRecordsTable({
   const periodTo = reportPeriod?.periodTo || reportToDefault;
   const outstandingColumns = relatedRecords
     ? [...new Set(relatedRecords.items.flatMap((item) => Object.keys(item)))]
-        .filter((key) => !isInternalField(key, relatedRecords.items))
-        .slice(0, 7)
+        .filter((key) => !isInternalField(key, relatedRecords.items, lookupOptions))
+        .slice(0, 8)
     : [];
   const keys = [...new Set(records.items.flatMap((item) => Object.keys(item)))]
-    .filter((key) => !isInternalField(key, records.items))
-    .slice(0, 7);
+    .filter((key) => !isInternalField(key, records.items, lookupOptions))
+    .slice(0, 8);
   const columns = keys.length > 0 ? keys : Object.keys(records.items[0] ?? {})
-    .filter((key) => !isInternalField(key, records.items))
-    .slice(0, 7);
+    .filter((key) => !isInternalField(key, records.items, lookupOptions))
+    .slice(0, 8);
 
   return (
     <section className="space-y-4">
@@ -216,8 +262,11 @@ export function ManagementRecordsTable({
                     <tr key={recordId || index} className="transition hover:bg-slate-50/70">
                       {columns.map((key) => (
                         <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">
-                          <span className="block truncate" title={displayValue(item[key])}>
-                            {displayValue(item[key])}
+                          <span
+                            className="block truncate"
+                            title={displayValue(item[key], key, lookupOptions)}
+                          >
+                            {displayValue(item[key], key, lookupOptions)}
                           </span>
                         </td>
                       ))}
@@ -335,7 +384,11 @@ export function ManagementRecordsTable({
                   {relatedRecords.items.map((item, index) => {
                     return (
                       <tr key={String(item.id ?? index)}>
-                        {outstandingColumns.map((key) => <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">{displayValue(item[key])}</td>)}
+                        {outstandingColumns.map((key) => (
+                          <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">
+                            {displayValue(item[key], key, lookupOptions)}
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}

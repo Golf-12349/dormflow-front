@@ -290,7 +290,12 @@ export async function managementAction(
     }
 
     revalidatePath(`/management/${RESOURCE_GROUPS[resource]}/${resource}`);
-    if (resource === "users") revalidatePath("/settings");
+    revalidatePath("/management");
+    revalidatePath("/dashboard");
+    revalidatePath("/rooms");
+    revalidatePath("/tenants");
+    revalidatePath("/billing");
+    revalidatePath("/settings");
     return { status: "success", message: t.management.workflows.success };
   } catch (error) {
     unstable_rethrow(error);

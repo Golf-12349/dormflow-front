@@ -47,10 +47,18 @@ interface ApiLoginResponse {
 
 function frontendRole(roles: string[]): "admin" | "manager" | "staff" {
   const normalized = roles.map((role) => role.toLowerCase());
-  if (normalized.some((role) => role === "superadmin" || role === "owner")) {
+  if (
+    normalized.some(
+      (role) => role === "superadmin" || role === "owner" || role === "admin",
+    )
+  ) {
     return "admin";
   }
-  if (normalized.some((role) => role === "manager")) return "manager";
+  if (
+    normalized.some((role) => role === "manager" || role === "dormmanager")
+  ) {
+    return "manager";
+  }
   return "staff";
 }
 

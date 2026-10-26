@@ -1,15 +1,15 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { t } from "@/lib/i18n";
 import {
+  getAllUtilityReadingsGroupedByRoom,
   getCurrentPeriod,
   getInvoices,
   getRooms,
   getTenants,
   getUtilityRates,
   getUtilityReadings,
-  getUtilityReadingsByRoom,
   shiftPeriod,
 } from "@/lib/api/dormflow";
 import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
@@ -43,25 +43,25 @@ export default async function BillingPage({
       : getCurrentPeriod();
 
   // Pre-load pattern (as in Rooms/Tenants): occupied rooms, rates and
-  // period-level data in one Promise.all; with the real API this becomes
-  // a bulk/per-room fetch.
-  const [invoices, readings, rates, allRooms, tenants] = await Promise.all([
-    getInvoices({ period }),
-    getUtilityReadings(period),
-    getUtilityRates(),
-    getRooms(),
-    getTenants(),
-  ]);
+  // period-level data in one Promise.all; bulk meter history is loaded once.
+  const [invoices, readings, rates, allRooms, tenants, groupedReadings] =
+    await Promise.all([
+      getInvoices({ period }),
+      getUtilityReadings(period),
+      getUtilityRates(),
+      getRooms(),
+      getTenants(),
+      getAllUtilityReadingsGroupedByRoom(),
+    ]);
 
   const occupiedRooms = allRooms.filter((room) => room.status === "occupied");
   const sortedRooms = [...occupiedRooms].sort((a, b) =>
     a.number.localeCompare(b.number),
   );
 
-  // Per-room meter history, pre-loaded in one parallel pass. With the real
-  // API this becomes a bulk/per-room fetch.
-  const histories = await Promise.all(
-    sortedRooms.map((room) => getUtilityReadingsByRoom(room.id)),
+  // Per-room meter history resolved from bulk query.
+  const histories = sortedRooms.map(
+    (room) => groupedReadings[room.id] ?? [],
   );
 
   const rooms: MeterRoom[] = sortedRooms.map((room, index) =>

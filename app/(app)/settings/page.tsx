@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 
 import { ConsolePreferences } from "@/components/settings/console-preferences";
-import { getUtilityRates } from "@/lib/api/dormflow";
+import {
+  StaffManagement,
+  type StaffUserItem,
+} from "@/components/settings/staff-management";
+import { apiRequest } from "@/lib/api/client";
+import { getOrganizations, getUtilityRates } from "@/lib/api/dormflow";
 import { t } from "@/lib/i18n";
 import { verifySession } from "@/lib/session";
 import { formatUnitPrice } from "@/lib/utils";
@@ -10,9 +15,27 @@ export const metadata: Metadata = {
   title: t.nav.settings,
 };
 
+async function getStaffUsers(): Promise<StaffUserItem[]> {
+  try {
+    const page = await apiRequest<{ items?: StaffUserItem[] }>("/users", {
+      query: { page: 1, pageSize: 50 },
+      cache: "no-store",
+    });
+    return page?.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function SettingsPage() {
   const session = await verifySession();
-  const rates = await getUtilityRates();
+  const canManageStaff =
+    session.user.role === "admin" || session.user.role === "manager";
+  const [rates, staffUsers, organizations] = await Promise.all([
+    getUtilityRates(),
+    canManageStaff ? getStaffUsers() : Promise.resolve([]),
+    canManageStaff ? getOrganizations() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -73,6 +96,14 @@ export default async function SettingsPage() {
           </p>
         </section>
       </div>
+
+      {canManageStaff ? (
+        <StaffManagement
+          users={staffUsers}
+          currentUserId={session.user.id}
+          organizations={organizations}
+        />
+      ) : null}
 
       <ConsolePreferences userId={session.user.id} />
     </div>

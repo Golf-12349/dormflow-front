@@ -67,7 +67,7 @@ function localizeDataLayerError(message: string): string {
     if (match) return localize(match);
   }
 
-  return t.billing.meter.errors.unknown;
+  return message || t.billing.meter.errors.unknown;
 }
 
 /** Trimmed string read; `null`/missing fields become `""`. */
@@ -265,7 +265,7 @@ function localizeInvoiceDataLayerError(message: string): string {
     if (pattern.test(message)) return localize();
   }
 
-  return t.billing.invoice.generate.errors.unknown;
+  return message || t.billing.invoice.generate.errors.unknown;
 }
 
 /**
@@ -359,6 +359,8 @@ export async function generateInvoiceAction(
   revalidatePath("/billing");
   revalidatePath("/dashboard");
   revalidatePath("/tenants");
+  revalidatePath("/management");
+  revalidatePath("/management/finance/invoices");
 
   return {
     status: "success",
@@ -396,7 +398,7 @@ function localizePaymentDataLayerError(message: string): string {
     if (pattern.test(message)) return localize();
   }
 
-  return t.billing.invoice.payment.errors.unknown;
+  return message || t.billing.invoice.payment.errors.unknown;
 }
 
 /** 7.6 — record a positive payment no greater than the current balance. */
@@ -459,6 +461,10 @@ export async function recordInvoicePaymentAction(
   revalidatePath("/billing");
   revalidatePath("/dashboard");
   revalidatePath("/tenants");
+  revalidatePath("/management");
+  revalidatePath("/management/finance/invoices");
+  revalidatePath("/management/finance/payments");
+  revalidatePath("/management/finance/receipts");
 
   return {
     status: "success",
@@ -484,7 +490,7 @@ function localizeUtilityRateDataLayerError(message: string): string {
     if (pattern.test(message)) return localize();
   }
 
-  return t.billing.rates.errors.unknown;
+  return message || t.billing.rates.errors.unknown;
 }
 
 /** 7.7 — validate and update the utility rates through the API. */

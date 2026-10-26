@@ -598,7 +598,13 @@ export async function getInvoicesByTenant(tenantId: string): Promise<Invoice[]> 
 }
 
 export async function getUtilityRates(): Promise<UtilityRates> {
-  const dormitories = await getCurrentDormitories();
+  const dormitories = await getApiDormitories();
+  if (dormitories.length === 0) {
+    return {
+      electricPerKwh: 0,
+      waterPerCubicMeter: 0,
+    };
+  }
   return {
     electricPerKwh: dormitories[0].electricityRatePerUnit,
     waterPerCubicMeter: dormitories[0].waterRatePerUnit,
@@ -660,7 +666,7 @@ export async function getUtilityReadings(
     getAll<ApiMeterReading>("/meter-readings", {
       periodMonth: `${period}-01`,
     }),
-    getCurrentDormitories(),
+    getApiDormitories(),
   ]);
   const ratesByDormitory = new Map(
     dormitories.map((dormitory) => [
@@ -679,7 +685,7 @@ export async function getUtilityReadingsByRoom(
 ): Promise<UtilityReading[]> {
   const [readings, dormitories] = await Promise.all([
     getAll<ApiMeterReading>("/meter-readings", { roomId }),
-    getCurrentDormitories(),
+    getApiDormitories(),
   ]);
   return mapReadingPair(
     readings,
@@ -691,6 +697,35 @@ export async function getUtilityReadingsByRoom(
       },
     ])),
   );
+}
+
+export async function getAllUtilityReadingsGroupedByRoom(): Promise<
+  Record<string, UtilityReading[]>
+> {
+  const [readings, dormitories] = await Promise.all([
+    getAll<ApiMeterReading>("/meter-readings"),
+    getApiDormitories(),
+  ]);
+  const mapped = mapReadingPair(
+    readings,
+    new Map(
+      dormitories.map((dormitory) => [
+        dormitory.id,
+        {
+          electricPerKwh: dormitory.electricityRatePerUnit,
+          waterPerCubicMeter: dormitory.waterRatePerUnit,
+        },
+      ]),
+    ),
+  );
+  const grouped: Record<string, UtilityReading[]> = {};
+  for (const reading of mapped) {
+    if (!grouped[reading.roomId]) {
+      grouped[reading.roomId] = [];
+    }
+    grouped[reading.roomId].push(reading);
+  }
+  return grouped;
 }
 
 export async function createUtilityReading(input: {
