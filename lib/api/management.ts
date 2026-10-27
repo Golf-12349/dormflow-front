@@ -43,88 +43,46 @@ function queryFor(module: ManagementModule): Record<string, string | number> {
   };
 }
 
-async function enrichSubResourceItems(
-  resourceSlug: string,
-  items: Record<string, unknown>[],
-): Promise<Record<string, unknown>[]> {
-  if (items.length === 0) return items;
-
-  if (resourceSlug === "contracts") {
-    const settled = await Promise.allSettled(
-      items.map(async (item) => {
-        const id = str(item.id);
-        if (!id) return item;
-        const renewals = await apiRequest<
-          Array<{
-            id: string;
-            previousEndDate: string;
-            newEndDate: string;
-            previousRent: number;
-            newRent: number;
-          }>
-        >(`/contracts/${encodeURIComponent(id)}/renewals`, {
-          cache: "no-store",
-        });
-        const summary = Array.isArray(renewals) && renewals.length > 0
-          ? renewals
-              .map((r) => `${r.previousEndDate} → ${r.newEndDate}`)
-              .join(", ")
-          : "—";
-        return { ...item, renewals: summary };
-      }),
-    );
-    return settled.map((result, idx) =>
-      result.status === "fulfilled" ? result.value : items[idx],
-    );
+export async function getContractRenewals(contractId: string): Promise<
+  Array<{
+    id: string;
+    previousEndDate: string;
+    newEndDate: string;
+    previousRent: number;
+    newRent: number;
+  }>
+> {
+  try {
+    return await apiRequest(`/contracts/${encodeURIComponent(contractId)}/renewals`, {
+      cache: "no-store",
+    });
+  } catch {
+    return [];
   }
+}
 
-  if (resourceSlug === "invoices") {
-    const settled = await Promise.allSettled(
-      items.map(async (item) => {
-        const id = str(item.id);
-        if (!id) return item;
-        const charges = await apiRequest<
-          Array<{ id: string; description: string; amount: number }>
-        >(`/invoices/${encodeURIComponent(id)}/charges`, {
-          cache: "no-store",
-        });
-        const summary = Array.isArray(charges) && charges.length > 0
-          ? charges.map((c) => `${c.description} (${c.amount})`).join(", ")
-          : "—";
-        return { ...item, charges: summary };
-      }),
-    );
-    return settled.map((result, idx) =>
-      result.status === "fulfilled" ? result.value : items[idx],
-    );
+export async function getInvoiceCharges(invoiceId: string): Promise<
+  Array<{ id: string; description: string; amount: number }>
+> {
+  try {
+    return await apiRequest(`/invoices/${encodeURIComponent(invoiceId)}/charges`, {
+      cache: "no-store",
+    });
+  } catch {
+    return [];
   }
+}
 
-  if (resourceSlug === "maintenance-requests") {
-    const settled = await Promise.allSettled(
-      items.map(async (item) => {
-        const id = str(item.id);
-        if (!id) return item;
-        const timeline = await apiRequest<
-          Array<{ id: string; status: string; note: string; createdAt: string }>
-        >(`/maintenance-requests/${encodeURIComponent(id)}/timeline`, {
-          cache: "no-store",
-        });
-        const summary = Array.isArray(timeline) && timeline.length > 0
-          ? timeline
-              .map((entry) =>
-                entry.note ? `${entry.status}: ${entry.note}` : entry.status,
-              )
-              .join(" | ")
-          : "—";
-        return { ...item, timelineHistory: summary };
-      }),
-    );
-    return settled.map((result, idx) =>
-      result.status === "fulfilled" ? result.value : items[idx],
-    );
+export async function getMaintenanceTimeline(requestId: string): Promise<
+  Array<{ id: string; status: string; note: string; createdAt: string }>
+> {
+  try {
+    return await apiRequest(`/maintenance-requests/${encodeURIComponent(requestId)}/timeline`, {
+      cache: "no-store",
+    });
+  } catch {
+    return [];
   }
-
-  return items;
 }
 
 export async function getManagementRecords(
@@ -138,25 +96,23 @@ export async function getManagementRecords(
   });
 
   if (Array.isArray(first) || !isRecord(first) || !Array.isArray(first.items)) {
-    const rawItems = toRecords(first);
-    const items = await enrichSubResourceItems(module.slug, rawItems);
+    const items = toRecords(first);
     return { items, totalCount: items.length };
   }
 
   const firstPage = first as PagedResponse;
-  const rawItems = toRecords(firstPage.items);
+  const items = toRecords(firstPage.items);
   const totalPages = Math.max(1, firstPage.totalPages ?? 1);
-  const totalCount = firstPage.totalCount ?? rawItems.length;
+  const totalCount = firstPage.totalCount ?? items.length;
 
   for (let page = 2; page <= totalPages; page += 1) {
     const result = await apiRequest<PagedResponse>(module.endpoint, {
       query: { page, pageSize: 100, ...query },
       cache: "no-store",
     });
-    rawItems.push(...toRecords(result.items));
+    items.push(...toRecords(result.items));
   }
 
-  const items = await enrichSubResourceItems(module.slug, rawItems);
   return { items, totalCount };
 }
 

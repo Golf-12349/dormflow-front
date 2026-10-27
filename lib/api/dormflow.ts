@@ -72,11 +72,19 @@ export interface RoomCreationOptions {
 
 interface ApiRoom {
   id: string;
+  organizationId?: string;
   dormitoryId: string;
+  dormitoryName?: string;
+  buildingId?: string;
+  buildingName?: string;
+  floorId?: string;
   floorName: string;
+  roomTypeId?: string;
   roomTypeName: string;
   roomNumber: string;
   monthlyRent: number;
+  depositAmount?: number;
+  maximumOccupants?: number;
   status: string;
   description: string | null;
 }
@@ -88,6 +96,8 @@ interface ApiTenant {
   email: string | null;
   phone: string | null;
   nationalId: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   status: string;
@@ -96,6 +106,7 @@ interface ApiTenant {
 
 interface ApiContract {
   id: string;
+  contractNumber?: string;
   roomId: string;
   tenantId: string;
   startDate: string;
@@ -103,6 +114,10 @@ interface ApiContract {
   monthlyRent: number;
   depositAmount: number;
   status: string;
+  signedAt?: string | null;
+  terminatedAt?: string | null;
+  terminationReason?: string | null;
+  notes?: string | null;
 }
 
 interface ApiInvoice {
@@ -264,9 +279,18 @@ export async function resolveDefaultOrganizationId(
 }
 
 function parseFloor(floorName: string, roomNumber: string): number {
-  const fromName = /\d+/u.exec(floorName)?.[0];
-  const fromRoom = /^\d/u.exec(roomNumber)?.[0];
-  return Number(fromName ?? fromRoom ?? 0);
+  if (!floorName && !roomNumber) return 1;
+  const match = /(?:floor|ຊັ້ນ|ชั้น)?\s*(\d{1,3})/iu.exec(floorName);
+  if (match?.[1]) {
+    const parsed = Number(match[1]);
+    if (parsed > 0 && parsed <= 200) return parsed;
+  }
+  const fromRoom = /^\D*(\d)/u.exec(roomNumber)?.[1];
+  if (fromRoom) {
+    const parsed = Number(fromRoom);
+    if (parsed > 0 && parsed <= 9) return parsed;
+  }
+  return 1;
 }
 
 function mapRoomType(name: string): RoomType {
@@ -288,13 +312,13 @@ function mapRoomStatus(status: string): RoomStatus {
     case "reserved":
       return "reserved";
     case "maintenance":
-    case "cleaning":
-    case "inactive":
       return "maintenance";
+    case "cleaning":
+      return "cleaning";
+    case "inactive":
+      return "inactive";
     default:
-      throw new ApiError(`Unknown room status "${status}" returned by the API.`, {
-        status: 502,
-      });
+      return "vacant";
   }
 }
 
@@ -313,9 +337,19 @@ function mapRoom(
     id: room.id,
     number: room.roomNumber,
     floor: parseFloor(room.floorName, room.roomNumber),
+    floorId: room.floorId,
+    floorName: room.floorName,
+    buildingId: room.buildingId,
+    buildingName: room.buildingName,
+    dormitoryId: room.dormitoryId,
+    dormitoryName: room.dormitoryName,
+    roomTypeId: room.roomTypeId,
+    roomTypeName: room.roomTypeName,
     type: mapRoomType(room.roomTypeName),
     status: mapRoomStatus(room.status),
     monthlyRate: room.monthlyRent,
+    depositAmount: room.depositAmount ?? 0,
+    maximumOccupants: room.maximumOccupants ?? 1,
     sizeSqm: 0,
     amenities: [],
     tenantId: contract?.tenantId ?? null,
@@ -348,13 +382,15 @@ function mapTenant(
     : [];
   const normalizedStatus = tenant.status.toLowerCase();
   const status: TenantStatus =
-    normalizedStatus === "inactive" || normalizedStatus === "blacklisted"
-      ? "inactive"
-      : contract?.status.toLowerCase() === "active"
-        ? "active"
-        : contract?.status.toLowerCase() === "terminated"
-          ? "inactive"
-        : "pending";
+    normalizedStatus === "blacklisted"
+      ? "blacklisted"
+      : normalizedStatus === "inactive"
+        ? "inactive"
+        : contract?.status.toLowerCase() === "active"
+          ? "active"
+          : contract?.status.toLowerCase() === "terminated"
+            ? "inactive"
+            : "pending";
 
   return {
     id: tenant.id,
@@ -362,8 +398,10 @@ function mapTenant(
     email: tenant.email ?? "",
     phone: tenant.phone ?? "",
     idCard: tenant.nationalId ?? "",
+    dateOfBirth: tenant.dateOfBirth ?? null,
+    address: tenant.address ?? null,
     roomId: contract?.status.toLowerCase() === "active" ? contract.roomId : null,
-    moveInDate: contract?.startDate ?? tenant.createdAt.slice(0, 10),
+    moveInDate: contract?.startDate ?? "",
     leaseEndDate: contract?.endDate ?? "",
     status,
     balance: tenantInvoices.reduce(
@@ -416,14 +454,11 @@ function mapInvoiceStatus(status: string): InvoiceStatus {
     case "overdue":
       return "overdue";
     case "draft":
+      return "draft";
     case "cancelled":
-      throw new ApiError(`Invoice with non-issued status "${status}" cannot be mapped.`, {
-        status: 502,
-      });
+      return "cancelled";
     default:
-      throw new ApiError(`Unknown invoice status "${status}" returned by the API.`, {
-        status: 502,
-      });
+      return "unpaid";
   }
 }
 
@@ -473,12 +508,7 @@ async function getMappedInvoices(): Promise<Invoice[]> {
     getApiInvoices(),
     getApiContracts(),
   ]);
-  return invoices
-    .filter((invoice) => {
-      const status = invoice.status.toLowerCase();
-      return status !== "draft" && status !== "cancelled";
-    })
-    .map((invoice) => mapInvoice(invoice, contracts));
+  return invoices.map((invoice) => mapInvoice(invoice, contracts));
 }
 
 async function getMappedTenants(): Promise<Tenant[]> {
@@ -615,6 +645,7 @@ export async function getUtilityRates(): Promise<UtilityRates> {
 
 export async function updateUtilityRates(
   rates: UtilityRates,
+  dormitoryId?: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   if (
     !Number.isFinite(rates.electricPerKwh)
@@ -627,7 +658,15 @@ export async function updateUtilityRates(
 
   try {
     const dormitories = await getCurrentDormitories();
-    for (const dormitory of dormitories) {
+    const targetDormitories = dormitoryId
+      ? dormitories.filter((d) => d.id === dormitoryId)
+      : dormitories.slice(0, 1);
+
+    if (targetDormitories.length === 0 && dormitories.length > 0) {
+      targetDormitories.push(dormitories[0]);
+    }
+
+    for (const dormitory of targetDormitories) {
       await apiRequest(`/dormitories/${encodeURIComponent(dormitory.id)}`, {
         method: "PUT",
         body: {
@@ -856,6 +895,8 @@ export async function createTenant(input: {
   email: string;
   phone: string;
   idCard: string;
+  dateOfBirth?: string | null;
+  address?: string | null;
   occupation?: string;
   emergencyContact: EmergencyContact;
   roomId?: string | null;
@@ -889,6 +930,12 @@ export async function createTenant(input: {
       emergencyContactName: input.emergencyContact.name,
       emergencyContactPhone: input.emergencyContact.phone,
     };
+    if (input.dateOfBirth) {
+      body.dateOfBirth = input.dateOfBirth;
+    }
+    if (input.address) {
+      body.address = input.address;
+    }
     if (resolvedOrganizationId) {
       body.organizationId = resolvedOrganizationId;
     }
@@ -939,7 +986,13 @@ export async function createTenant(input: {
 
 export async function updateTenantContact(
   tenantId: string,
-  contact: { email: string; phone: string; emergencyContact: EmergencyContact },
+  contact: {
+    email: string;
+    phone: string;
+    dateOfBirth?: string | null;
+    address?: string | null;
+    emergencyContact: EmergencyContact;
+  },
 ): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
   try {
     const existing = await apiRequest<ApiTenant>(
@@ -953,6 +1006,8 @@ export async function updateTenantContact(
         email: contact.email,
         phone: contact.phone,
         nationalId: existing.nationalId,
+        dateOfBirth: contact.dateOfBirth ?? existing.dateOfBirth ?? null,
+        address: contact.address ?? existing.address ?? null,
         emergencyContactName: contact.emergencyContact.name,
         emergencyContactPhone: contact.emergencyContact.phone,
       },
@@ -1312,7 +1367,7 @@ export async function getAllTenantHistoriesGroupedByTenant(): Promise<
     grouped[contract.tenantId].push({
       contractId: contract.id,
       roomId: contract.roomId,
-      contractNumber: contract.id.slice(0, 8).toUpperCase(),
+      contractNumber: contract.contractNumber || contract.id.slice(0, 8).toUpperCase(),
       status: contract.status,
       startDate: contract.startDate,
       endDate: contract.endDate,

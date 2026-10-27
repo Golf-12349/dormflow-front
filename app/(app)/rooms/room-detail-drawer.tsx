@@ -155,8 +155,15 @@ export function RoomDetailDrawer({
               {t.rooms.roomTitle(room.number)}
             </h2>
             <p className="mt-1 text-xs text-slate-500">
-              {t.rooms.types[room.type] ?? roomTypeLabel(room.type)} ·{" "}
-              {t.rooms.floorLabel(room.floor)}
+              {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
+              {room.buildingName || room.floorName ? (
+                <>
+                  {" · "}
+                  {[room.buildingName, room.floorName || t.rooms.floorLabel(room.floor)].filter(Boolean).join(" · ")}
+                </>
+              ) : (
+                <> · {t.rooms.floorLabel(room.floor)}</>
+              )}
             </p>
             <div className="mt-2">
               <StatusBadge status={room.status} />
@@ -393,10 +400,26 @@ export function RoomDetailDrawer({
                     {formatCurrency(room.monthlyRate)}
                   </dd>
                 </div>
-                <div className={ROW_CLASSES}>
-                  <dt className={DT_CLASSES}>{t.rooms.fields.size}</dt>
-                  <dd className={DD_CLASSES}>{room.sizeSqm} m²</dd>
-                </div>
+                {typeof room.depositAmount === "number" && room.depositAmount > 0 ? (
+                  <div className={ROW_CLASSES}>
+                    <dt className={DT_CLASSES}>{t.rooms.fields.deposit}</dt>
+                    <dd className={DD_CLASSES}>
+                      {formatCurrency(room.depositAmount)}
+                    </dd>
+                  </div>
+                ) : null}
+                {typeof room.maximumOccupants === "number" && room.maximumOccupants > 0 ? (
+                  <div className={ROW_CLASSES}>
+                    <dt className={DT_CLASSES}>ຈຳນວນພັກສູງສຸດ</dt>
+                    <dd className={DD_CLASSES}>{room.maximumOccupants} ຄົນ</dd>
+                  </div>
+                ) : null}
+                {typeof room.sizeSqm === "number" && room.sizeSqm > 0 ? (
+                  <div className={ROW_CLASSES}>
+                    <dt className={DT_CLASSES}>{t.rooms.fields.size}</dt>
+                    <dd className={DD_CLASSES}>{room.sizeSqm} m²</dd>
+                  </div>
+                ) : null}
                 <div className={ROW_CLASSES}>
                   <dt className={DT_CLASSES}>{t.rooms.fields.electricity}</dt>
                   <dd className={DD_CLASSES}>
@@ -414,19 +437,21 @@ export function RoomDetailDrawer({
           </section>
 
           {/* Amenities */}
-          <section>
-            <h3 className={SECTION_TITLE}>{t.rooms.sections.amenities}</h3>
-            <ul className="mt-3 flex flex-wrap gap-1.5">
-              {room.amenities.map((amenity) => (
-                <li
-                  key={amenity}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600"
-                >
-                  {amenity}
-                </li>
-              ))}
-            </ul>
-          </section>
+          {room.amenities && room.amenities.length > 0 ? (
+            <section>
+              <h3 className={SECTION_TITLE}>{t.rooms.sections.amenities}</h3>
+              <ul className="mt-3 flex flex-wrap gap-1.5">
+                {room.amenities.map((amenity) => (
+                  <li
+                    key={amenity}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600"
+                  >
+                    {amenity}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {/* Meter history — already newest period first */}
           <section>

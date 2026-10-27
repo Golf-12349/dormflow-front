@@ -128,6 +128,8 @@ export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
   occupied: "ມີຜູ້ເຊົ່າ",
   maintenance: "ສ້ອມແປງ",
   reserved: "ຈອງແລ້ວ",
+  cleaning: "ກຳລັງອະນາໄມ",
+  inactive: "ປິດໃຊ້ງານ",
 };
 
 /** Tailwind badge classes per room status (used by the room + dashboard views). */
@@ -136,6 +138,8 @@ export const ROOM_STATUS_BADGE_CLASSES: Record<RoomStatus, string> = {
   occupied: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
   maintenance: "bg-amber-50 text-amber-700 ring-amber-600/20",
   reserved: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  cleaning: "bg-teal-50 text-teal-700 ring-teal-600/20",
+  inactive: "bg-slate-100 text-slate-600 ring-slate-500/20",
 };
 
 export const ROOM_STATUS_DOT_CLASSES: Record<RoomStatus, string> = {
@@ -143,18 +147,22 @@ export const ROOM_STATUS_DOT_CLASSES: Record<RoomStatus, string> = {
   occupied: "bg-indigo-500",
   maintenance: "bg-amber-500",
   reserved: "bg-sky-500",
+  cleaning: "bg-teal-500",
+  inactive: "bg-slate-400",
 };
 
 export const TENANT_STATUS_LABELS: Record<TenantStatus, string> = {
   active: "ກຳລັງເຊົ່າ",
   pending: "ລໍຖ້າ",
   inactive: "ຢຸດເຊົ່າ",
+  blacklisted: "ຕິດບັນຊີດຳ",
 };
 
 export const TENANT_STATUS_BADGE_CLASSES: Record<TenantStatus, string> = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
   inactive: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  blacklisted: "bg-rose-50 text-rose-700 ring-rose-600/20",
 };
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -162,6 +170,8 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   partial: "ຊຳລະບາງສ່ວນ",
   unpaid: "ຍັງບໍ່ໄດ້ຊຳລະ",
   overdue: "ເກີນກຳນົດ",
+  draft: "ສະບັບຮ່າງ",
+  cancelled: "ຍົກເລີກແລ້ວ",
 };
 
 export const INVOICE_STATUS_BADGE_CLASSES: Record<InvoiceStatus, string> = {
@@ -169,6 +179,8 @@ export const INVOICE_STATUS_BADGE_CLASSES: Record<InvoiceStatus, string> = {
   partial: "bg-sky-50 text-sky-700 ring-sky-600/20",
   unpaid: "bg-slate-100 text-slate-600 ring-slate-500/20",
   overdue: "bg-rose-50 text-rose-700 ring-rose-600/20",
+  draft: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  cancelled: "bg-zinc-100 text-zinc-500 ring-zinc-400/20",
 };
 
 export function roomTypeLabel(type: string): string {

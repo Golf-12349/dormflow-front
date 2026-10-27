@@ -4,7 +4,6 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowUpRight,
   Building2,
   ChevronDown,
   LogOut,
@@ -80,7 +79,7 @@ export function SidebarNav({
           className={cn(
             "flex items-center rounded-xl text-sm font-medium transition",
             active
-              ? "bg-indigo-500 text-white shadow-sm"
+              ? "bg-indigo-500/20 text-white shadow-sm"
               : "text-slate-300 hover:bg-white/5 hover:text-white",
           )}
         >
@@ -91,7 +90,7 @@ export function SidebarNav({
             onClick={() =>
               setExpansionOverride({ pathname, expanded: !expanded })
             }
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left"
           >
             <Icon className="size-4 shrink-0" />
             <span className="min-w-0 flex-1">{item.label}</span>
@@ -103,16 +102,6 @@ export function SidebarNav({
               aria-hidden="true"
             />
           </button>
-          {item.overviewHref ? (
-            <Link
-              href={item.overviewHref}
-              aria-label={t.nav.openGroupOverview(item.label)}
-              onClick={onNavigate}
-              className="mr-1 rounded-lg p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
-            >
-              <ArrowUpRight className="size-3.5" aria-hidden="true" />
-            </Link>
-          ) : null}
         </div>
         <div
           id={submenuId}

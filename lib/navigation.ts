@@ -6,14 +6,11 @@ import {
   CarFront,
   CalendarDays,
   ChartNoAxesCombined,
-  Cog,
   ContactRound,
   CreditCard,
   DoorOpen,
   FileText,
-  Gauge,
   Home,
-  Landmark,
   Layers,
   LayoutDashboard,
   Megaphone,
@@ -29,11 +26,9 @@ import {
   Wallet,
   Warehouse,
   Wrench,
-  KeyRound,
 } from "lucide-react";
 
 import { t } from "@/lib/i18n";
-import { MANAGEMENT_GROUPS } from "@/lib/management";
 
 /**
  * Navigation model for the admin shell.
@@ -62,113 +57,9 @@ export interface NavSection {
   items: NavItem[];
 }
 
-const PROPERTY_MODULE_ICONS: Record<string, NavIcon> = {
-  organizations: Landmark,
-  dormitories: Home,
-  buildings: Warehouse,
-  floors: Layers,
-  "room-types": BedDouble,
-  rooms: DoorOpen,
-};
-
-const RESIDENT_MODULE_ICONS: Record<string, NavIcon> = {
-  tenants: UserRound,
-  contracts: FileText,
-  reservations: CalendarDays,
-};
-
-const FINANCE_MODULE_ICONS: Record<string, NavIcon> = {
-  "meter-readings": Gauge,
-  invoices: FileText,
-  payments: CreditCard,
-  deposits: PiggyBank,
-  expenses: Wallet,
-  receipts: Receipt,
-  reports: ChartNoAxesCombined,
-};
-
-const SERVICE_MODULE_ICONS: Record<string, NavIcon> = {
-  "maintenance-requests": Wrench,
-  parcels: Package,
-  visitors: ContactRound,
-  parking: CarFront,
-  announcements: Megaphone,
-  notifications: BellRing,
-};
-
-const ADMINISTRATION_MODULE_ICONS: Record<string, NavIcon> = {
-  users: UserRound,
-  roles: ShieldCheck,
-  permissions: KeyRound,
-  "audit-logs": ScrollText,
-  settings: Settings2,
-};
-
-function managementNavItem(group: (typeof MANAGEMENT_GROUPS)[number]): NavItem {
-  const href = `/management/${group.slug}`;
-  const item: NavItem = {
-    label: group.title,
-    href,
-    icon: group.icon,
-    description: group.description,
-  };
-
-  if (group.slug === "properties") {
-    item.overviewHref = href;
-    item.children = group.modules.filter((module) => !module.href).map((module) => ({
-      label: module.title,
-      href: module.href ?? `${href}/${module.slug}`,
-      icon: PROPERTY_MODULE_ICONS[module.slug] ?? Building2,
-      description: module.description,
-    }));
-  }
-
-  if (group.slug === "residents") {
-    item.overviewHref = href;
-    item.children = group.modules.filter((module) => !module.href).map((module) => ({
-      label: module.title,
-      href: module.href ?? `${href}/${module.slug}`,
-      icon: RESIDENT_MODULE_ICONS[module.slug] ?? Users,
-      description: module.description,
-    }));
-  }
-
-  if (group.slug === "finance") {
-    item.overviewHref = href;
-    item.children = group.modules.filter((module) => !module.href).map((module) => ({
-      label: module.title,
-      href: module.href ?? `${href}/${module.slug}`,
-      icon: FINANCE_MODULE_ICONS[module.slug] ?? Receipt,
-      description: module.description,
-    }));
-  }
-
-  if (group.slug === "services") {
-    item.overviewHref = href;
-    item.children = group.modules.filter((module) => !module.href).map((module) => ({
-      label: module.title,
-      href: module.href ?? `${href}/${module.slug}`,
-      icon: SERVICE_MODULE_ICONS[module.slug] ?? Wrench,
-      description: module.description,
-    }));
-  }
-
-  if (group.slug === "administration") {
-    item.overviewHref = href;
-    item.children = group.modules.filter((module) => !module.href).map((module) => ({
-      label: module.title,
-      href: module.href ?? `${href}/${module.slug}`,
-      icon: ADMINISTRATION_MODULE_ICONS[module.slug] ?? Cog,
-      description: module.description,
-    }));
-  }
-
-  return item;
-}
-
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: t.nav.operations,
+    title: "ການດຳເນີນງານຫຼັກ",
     items: [
       {
         label: t.nav.overview,
@@ -183,28 +74,212 @@ export const NAV_SECTIONS: NavSection[] = [
         description: t.nav.roomsDescription,
       },
       {
-        label: t.nav.tenants,
+        label: "ຜູ້ເຊົ່າ ແລະ ສັນຍາ",
         href: "/tenants",
         icon: Users,
-        description: t.nav.tenantsDescription,
+        description: "ຈັດການຂໍ້ມູນຜູ້ເຊົ່າ, ສັນຍາເຊົ່າ ແລະ ການຈອງຫ້ອງ",
+        children: [
+          {
+            label: "ຜູ້ເຊົ່າທັງໝົດ",
+            href: "/tenants",
+            icon: UserRound,
+            description: t.nav.tenantsDescription,
+          },
+          {
+            label: "ສັນຍາເຊົ່າ",
+            href: "/management/residents/contracts",
+            icon: FileText,
+            description: "ສັນຍາເຊົ່າ, ຕໍ່ອາຍຸ ແລະ ການຍົກເລີກ",
+          },
+          {
+            label: "ການຈອງຫ້ອງ",
+            href: "/management/residents/reservations",
+            icon: CalendarDays,
+            description: "ການຈອງຫ້ອງພັກລ່ວງໜ້າ",
+          },
+        ],
       },
-      ...MANAGEMENT_GROUPS.map(managementNavItem),
+      {
+        label: "ຈັດການຫໍພັກ",
+        href: "/management/properties",
+        icon: Building2,
+        description: "ຕັ້ງຄ່າໂຄງສ້າງຫໍພັກ, ອາຄານ, ຊັ້ນ ແລະ ປະເພດຫ້ອງ",
+        children: [
+          {
+            label: "ພາບລວມໂຄງສ້າງ",
+            href: "/management/properties",
+            icon: Building2,
+            description: "ຈັດການຂໍ້ມູນພື້ນຖານຫໍພັກແບບລວມສູນ",
+          },
+          {
+            label: "ຫໍພັກ",
+            href: "/management/properties/dormitories",
+            icon: Home,
+            description: "ລາຍຊື່ຫໍພັກໃນລະບົບ",
+          },
+          {
+            label: "ອາຄານ",
+            href: "/management/properties/buildings",
+            icon: Warehouse,
+            description: "ອາຄານພາຍໃນຫໍພັກ",
+          },
+          {
+            label: "ຊັ້ນ",
+            href: "/management/properties/floors",
+            icon: Layers,
+            description: "ຊັ້ນພາຍໃນອາຄານ",
+          },
+          {
+            label: "ປະເພດຫ້ອງ",
+            href: "/management/properties/room-types",
+            icon: BedDouble,
+            description: "ປະເພດຫ້ອງ ແລະ ອັດຕາຄ່າເຊົ່າ",
+          },
+        ],
+      },
     ],
   },
   {
-    title: t.nav.financeAndSystem,
+    title: "ການເງິນ ແລະ ບໍລິການ",
     items: [
       {
-        label: t.nav.billing,
+        label: "ການເງິນ ແລະ ໃບບິນ",
         href: "/billing",
         icon: Receipt,
-        description: t.nav.billingDescription,
+        description: "ບັນທຶກມິເຕີ, ອອກໃບບິນ ແລະ ການຊຳລະເງິນ",
+        children: [
+          {
+            label: "ຈັດການໃບບິນ ແລະ ມິເຕີ",
+            href: "/billing",
+            icon: Receipt,
+            description: t.nav.billingDescription,
+          },
+          {
+            label: "ຮອບໃບບິນ",
+            href: "/management/finance/billing-periods",
+            icon: CalendarDays,
+            description: "ກຳນົດຮອບເວລາອອກໃບບິນ",
+          },
+          {
+            label: "ໃບບິນທັງໝົດ",
+            href: "/management/finance/invoices",
+            icon: FileText,
+            description: "ລາຍການໃບບິນ ແລະ ປະຫວັດໃບບິນ",
+          },
+          {
+            label: "ການຊຳລະເງິນ",
+            href: "/management/finance/payments",
+            icon: CreditCard,
+            description: "ບັນທຶກການຊຳລະເງິນຂອງຜູ້ເຊົ່າ",
+          },
+          {
+            label: "ເງິນມັດຈຳ",
+            href: "/management/finance/deposits",
+            icon: PiggyBank,
+            description: "ຈັດການເງິນມັດຈຳ ແລະ ການຄືນເງິນ",
+          },
+          {
+            label: "ລາຍຈ່າຍ",
+            href: "/management/finance/expenses",
+            icon: Wallet,
+            description: "ບັນທຶກລາຍຈ່າຍທົ່ວໄປຂອງຫໍພັກ",
+          },
+          {
+            label: "ລາຍງານການເງິນ",
+            href: "/management/finance/reports",
+            icon: ChartNoAxesCombined,
+            description: "ລາຍງານລາຍຮັບ-ລາຍຈ່າຍ ແລະ ສະຖິຕິ",
+          },
+        ],
       },
       {
-        label: t.nav.settings,
+        label: "ບໍລິການຜູ້ພັກອາໄສ",
+        href: "/management/services/maintenance-requests",
+        icon: Wrench,
+        description: "ແຈ້ງສ້ອມແປງ, ພັດສະດຸ, ຜູ້ມາຕິດຕໍ່ ແລະ ບ່ອນຈອດລົດ",
+        children: [
+          {
+            label: "ແຈ້ງສ້ອມແປງ",
+            href: "/management/services/maintenance-requests",
+            icon: Wrench,
+            description: "ລາຍການແຈ້ງສ້ອມແປງ ແລະ ຕິດຕາມສະຖານະ",
+          },
+          {
+            label: "ພັດສະດຸ",
+            href: "/management/services/parcels",
+            icon: Package,
+            description: "ຈັດການພັດສະດຸຂອງຜູ້ເຊົ່າ",
+          },
+          {
+            label: "ຜູ້ມາຕິດຕໍ່",
+            href: "/management/services/visitors",
+            icon: ContactRound,
+            description: "ບັນທຶກການເຂົ້າ-ອອກຂອງຜູ້ມາຕິດຕໍ່",
+          },
+          {
+            label: "ບ່ອນຈອດລົດ",
+            href: "/management/services/parking",
+            icon: CarFront,
+            description: "ຈັດການບ່ອນຈອດລົດ ແລະ ທະບຽນລົດ",
+          },
+        ],
+      },
+      {
+        label: "ແຈ້ງເຕືອນ ແລະ ປະກາດ",
+        href: "/management/services/announcements",
+        icon: Megaphone,
+        description: "ປະກາດຂ່າວສານ ແລະ ແຈ້ງເຕືອນຜູ້ເຊົ່າ",
+        children: [
+          {
+            label: "ປະກາດຂ່າວສານ",
+            href: "/management/services/announcements",
+            icon: Megaphone,
+            description: "ປະກາດຂ່າວສານເຖິງຜູ້ເຊົ່າ",
+          },
+          {
+            label: "ແຈ້ງເຕືອນລະບົບ",
+            href: "/management/services/notifications",
+            icon: BellRing,
+            description: "ການແຈ້ງເຕືອນລະບົບ ແລະ ຂໍ້ຄວາມ",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "ຕັ້ງຄ່າ ແລະ ລະບົບ",
+    items: [
+      {
+        label: "ຕັ້ງຄ່າ ແລະ ຜູ້ດູແລລະບົບ",
         href: "/settings",
-        icon: Settings,
-        description: t.nav.settingsDescription,
+        icon: Settings2,
+        description: "ຕັ້ງຄ່າລະບົບ, ຜູ້ໃຊ້ງານ ແລະ ບັນທຶກການໃຊ້ງານ",
+        children: [
+          {
+            label: "ຕັ້ງຄ່າທົ່ວໄປ",
+            href: "/settings",
+            icon: Settings,
+            description: t.nav.settingsDescription,
+          },
+          {
+            label: "ຜູ້ໃຊ້ລະບົບ",
+            href: "/management/administration/users",
+            icon: UserRound,
+            description: "ຈັດການບັນຊີຜູ້ໃຊ້ ແລະ ພະນັກງານ",
+          },
+          {
+            label: "ບົດບາດ ແລະ ສິດ",
+            href: "/management/administration/roles",
+            icon: ShieldCheck,
+            description: "ກຳນົດບົດບາດ ແລະ ສິດການເຂົ້າເຖິງ",
+          },
+          {
+            label: "ບັນທຶກການໃຊ້ງານ",
+            href: "/management/administration/audit-logs",
+            icon: ScrollText,
+            description: "ປະຫວັດການດຳເນີນງານໃນລະບົບ",
+          },
+        ],
       },
     ],
   },

@@ -279,6 +279,21 @@ export function TenantDetailDrawer({
                   defaultValue={tenant.phone}
                   autoComplete="tel"
                 />
+                <TenantFormField
+                  id="contact-dob"
+                  name="dateOfBirth"
+                  label="ວັນເດືອນປີເກີດ"
+                  type="date"
+                  defaultValue={tenant.dateOfBirth?.slice(0, 10) ?? ""}
+                  required={false}
+                />
+                <TenantFormField
+                  id="contact-address"
+                  name="address"
+                  label="ທີ່ຢູ່ຕາມທະບຽນບ້ານ"
+                  defaultValue={tenant.address ?? ""}
+                  required={false}
+                />
 
                 <p className="pt-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                   {t.tenants.profile.sections.emergency}
@@ -369,6 +384,18 @@ export function TenantDetailDrawer({
                 </dt>
                 <dd className={DD_CLASSES}>{tenant.idCard}</dd>
               </div>
+              {tenant.dateOfBirth ? (
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>ວັນເດືອນປີເກີດ</dt>
+                  <dd className={DD_CLASSES}>{formatDate(tenant.dateOfBirth)}</dd>
+                </div>
+              ) : null}
+              {tenant.address ? (
+                <div className={ROW_CLASSES}>
+                  <dt className={DT_CLASSES}>ທີ່ຢູ່</dt>
+                  <dd className={DD_CLASSES}>{tenant.address}</dd>
+                </div>
+              ) : null}
               </dl>
             )}
           </section>

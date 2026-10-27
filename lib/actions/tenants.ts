@@ -102,6 +102,8 @@ export async function createTenantAction(
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
   const idCard = readField(formData, "idCard");
+  const dateOfBirth = readField(formData, "dateOfBirth") || null;
+  const address = readField(formData, "address") || null;
   const emergencyName = readField(formData, "emergencyName");
   const emergencyPhone = readField(formData, "emergencyPhone");
   const roomId = readField(formData, "roomId") || null;
@@ -166,6 +168,8 @@ export async function createTenantAction(
     email,
     phone,
     idCard,
+    dateOfBirth,
+    address,
     emergencyContact: {
       name: emergencyName,
       phone: emergencyPhone,
@@ -211,6 +215,8 @@ export async function updateTenantContactAction(
   const tenantId = readField(formData, "tenantId");
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
+  const dateOfBirth = readField(formData, "dateOfBirth") || null;
+  const address = readField(formData, "address") || null;
   const emergencyName = readField(formData, "emergencyName");
   const emergencyPhone = readField(formData, "emergencyPhone");
 
@@ -248,6 +254,8 @@ export async function updateTenantContactAction(
   const result = await updateTenantContact(tenantId, {
     email,
     phone,
+    dateOfBirth,
+    address,
     emergencyContact: {
       name: emergencyName,
       phone: emergencyPhone,

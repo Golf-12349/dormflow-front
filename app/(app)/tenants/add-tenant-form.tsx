@@ -195,6 +195,19 @@ export function AddTenantForm({
                     label={t.tenants.profile.fields.idCard}
                   />
                 </div>
+                <TenantFormField
+                  id="add-dob"
+                  name="dateOfBirth"
+                  label="ວັນເດືອນປີເກີດ"
+                  type="date"
+                  required={false}
+                />
+                <TenantFormField
+                  id="add-address"
+                  name="address"
+                  label="ທີ່ຢູ່ຕາມທະບຽນບ້ານ"
+                  required={false}
+                />
               </div>
 
               <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">

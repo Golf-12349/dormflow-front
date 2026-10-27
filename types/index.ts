@@ -69,7 +69,13 @@ export interface RoomStatusFormState {
 /* Rooms                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type RoomStatus = "vacant" | "occupied" | "maintenance" | "reserved";
+export type RoomStatus =
+  | "vacant"
+  | "occupied"
+  | "maintenance"
+  | "reserved"
+  | "cleaning"
+  | "inactive";
 
 export type RoomType = "single" | "double" | "studio" | "suite";
 
@@ -78,12 +84,22 @@ export interface Room {
   /** Human readable room number, e.g. "203". */
   number: string;
   floor: number;
+  floorId?: string;
+  floorName?: string;
+  buildingId?: string;
+  buildingName?: string;
+  dormitoryId?: string;
+  dormitoryName?: string;
+  roomTypeId?: string;
+  roomTypeName?: string;
   type: RoomType;
   status: RoomStatus;
   /** Monthly rent in the currency configured in `lib/utils.ts`. */
   monthlyRate: number;
-  sizeSqm: number;
-  amenities: string[];
+  depositAmount?: number;
+  maximumOccupants?: number;
+  sizeSqm?: number;
+  amenities?: string[];
   /** Null when nobody is assigned to the room. */
   tenantId: string | null;
   note: string | null;
@@ -93,7 +109,7 @@ export interface Room {
 /* Tenants                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export type TenantStatus = "active" | "pending" | "inactive";
+export type TenantStatus = "active" | "pending" | "inactive" | "blacklisted";
 
 export interface EmergencyContact {
   name: string;
@@ -107,6 +123,8 @@ export interface Tenant {
   email: string;
   phone: string;
   idCard: string;
+  dateOfBirth?: string | null;
+  address?: string | null;
   /** Null for tenants that have moved out and are not assigned to a room. */
   roomId: string | null;
   /** ISO date. */
@@ -117,7 +135,7 @@ export interface Tenant {
   /** Positive values mean the tenant owes money. */
   balance: number;
   deposit: number;
-  occupation: string;
+  occupation?: string;
   emergencyContact: EmergencyContact;
 }
 
@@ -155,7 +173,13 @@ export interface MeterReadingFormState {
 /* Utilities & billing                                                        */
 /* -------------------------------------------------------------------------- */
 
-export type InvoiceStatus = "paid" | "partial" | "unpaid" | "overdue";
+export type InvoiceStatus =
+  | "paid"
+  | "partial"
+  | "unpaid"
+  | "overdue"
+  | "draft"
+  | "cancelled";
 
 /** Billing period in `YYYY-MM` format. */
 export type BillingPeriod = string;
@@ -191,6 +215,7 @@ export interface Invoice {
   total: number;
   paidAmount: number;
   status: InvoiceStatus;
+  chargesTotal?: number;
 }
 
 /** Payload used when generating an invoice from a meter reading (Phase 7). */

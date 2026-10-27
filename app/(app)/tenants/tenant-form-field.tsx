@@ -14,6 +14,7 @@ interface TenantFormFieldProps {
   /** Pre-fills an existing value (edit form); omitted for blank add-form fields. */
   defaultValue?: string;
   autoComplete?: string;
+  required?: boolean;
 }
 
 export function TenantFormField({
@@ -23,6 +24,7 @@ export function TenantFormField({
   type = "text",
   defaultValue,
   autoComplete,
+  required = true,
 }: TenantFormFieldProps) {
   return (
     <div className="space-y-1.5">
@@ -33,7 +35,7 @@ export function TenantFormField({
         id={id}
         name={name}
         type={type}
-        required
+        required={required}
         defaultValue={defaultValue}
         autoComplete={autoComplete}
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition outline-none focus:border-indigo-400"

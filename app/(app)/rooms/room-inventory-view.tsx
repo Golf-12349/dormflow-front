@@ -358,8 +358,15 @@ export function RoomInventoryView({
                   <StatusBadge status={room.status} />
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {t.rooms.types[room.type] ?? roomTypeLabel(room.type)} ·{" "}
-                  {t.rooms.floorLabel(room.floor)}
+                  {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
+                  {room.buildingName || room.floorName ? (
+                    <>
+                      {" · "}
+                      {[room.buildingName, room.floorName || t.rooms.floorLabel(room.floor)].filter(Boolean).join(" · ")}
+                    </>
+                  ) : (
+                    <> · {t.rooms.floorLabel(room.floor)}</>
+                  )}
                 </p>
               </div>
 
@@ -430,10 +437,10 @@ export function RoomInventoryView({
                       {t.rooms.roomTitle(room.number)}
                     </td>
                     <td className="px-5 py-3.5">
-                      {t.rooms.floorLabel(room.floor)}
+                      {[room.buildingName, room.floorName || t.rooms.floorLabel(room.floor)].filter(Boolean).join(" · ")}
                     </td>
                     <td className="px-5 py-3.5">
-                      {t.rooms.types[room.type] ?? roomTypeLabel(room.type)}
+                      {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
                     </td>
                     <td className="px-5 py-3.5 text-slate-900 font-medium">
                       {formatCurrency(room.monthlyRate)}

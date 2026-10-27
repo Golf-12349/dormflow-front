@@ -25,9 +25,12 @@ import {
   getInvoices,
   getRecentActivities,
   getRevenueTrend,
+  getRoomCreationOptions,
   getRooms,
+  getUtilityRates,
   shiftPeriod,
 } from "@/lib/api/dormflow";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { verifySession } from "@/lib/session";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -48,7 +51,6 @@ import type {
   Invoice,
   RevenuePoint,
   Room,
-  RoomStatus,
 } from "@/types";
 
 export const metadata: Metadata = {
@@ -135,12 +137,12 @@ function formatDelta(delta: MetricDelta): string {
 }
 
 /** Segment order shared by every stacked occupancy bar and its legend. */
-const OCCUPANCY_SEGMENTS: RoomStatus[] = [
+const OCCUPANCY_SEGMENTS = [
   "occupied",
   "vacant",
   "maintenance",
   "reserved",
-];
+] as const;
 
 /** Occupancy-ring geometry (the SVG viewBox is 100 × 100). */
 const RING_RADIUS = 42;
@@ -294,6 +296,8 @@ export default async function DashboardPage() {
     activities,
     invoices,
     rooms,
+    creationOptions,
+    utilityRates,
   ] = await Promise.all([
     getDashboardMetrics(),
     getRevenueTrend(),
@@ -301,6 +305,8 @@ export default async function DashboardPage() {
     getRecentActivities(ACTIVITY_LIMIT),
     getInvoices(),
     getRooms(),
+    getRoomCreationOptions(),
+    getUtilityRates(),
   ]);
 
   /** Last six periods, oldest first, as drawn by the revenue card (4.3). */
@@ -391,6 +397,15 @@ export default async function DashboardPage() {
           {t.dashboard.snapshot(formatPeriod(currentPeriod))}
         </p>
       </div>
+
+      <SetupChecklist
+        dormitoriesCount={creationOptions.dormitories?.length ?? (creationOptions.buildings.length > 0 ? 1 : 0)}
+        buildingsCount={creationOptions.buildings.length}
+        floorsCount={creationOptions.floors.length}
+        roomTypesCount={creationOptions.roomTypes.length}
+        roomsCount={rooms.length}
+        hasUtilityRates={utilityRates.electricPerKwh > 0 || utilityRates.waterPerCubicMeter > 0}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, hint, icon: Icon, deltas, ariaLabel }) => (
