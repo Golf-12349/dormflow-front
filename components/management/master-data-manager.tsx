@@ -8,7 +8,9 @@ import {
   Home,
   Layers,
   Loader2,
+  Pencil,
   Plus,
+  Save,
   Settings2,
   Sparkles,
   Trash2,
@@ -22,10 +24,20 @@ import {
   createMasterFloorAction,
   createMasterRoomTypeAction,
   deleteMasterRecordAction,
+  updateMasterBuildingAction,
+  updateMasterDormitoryAction,
+  updateMasterFloorAction,
+  updateMasterRoomTypeAction,
   type MasterDataActionState,
 } from "@/lib/actions/master-data";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
-import type { RoomCreationOptions } from "@/lib/api/dormflow";
+import type {
+  ApiBuilding,
+  ApiDormitory,
+  ApiFloor,
+  ApiRoomType,
+  RoomCreationOptions,
+} from "@/lib/api/dormflow";
 import { t } from "@/lib/i18n";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -39,6 +51,8 @@ type TabKey = "dormitories" | "buildings" | "floors" | "roomTypes";
 const LABEL_CLASSES = "block text-xs font-medium text-slate-700";
 const INPUT_CLASSES =
   "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400";
+const COMPACT_INPUT_CLASSES =
+  "w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 outline-none focus:border-indigo-400";
 
 function StatusAlert({ state }: { state: MasterDataActionState }) {
   if (state.status === "idle" || !state.message) return null;
@@ -83,7 +97,7 @@ function DeleteItemButton({
   );
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex items-center gap-1">
       <ActionResultToast state={state} />
       {!confirming ? (
         <button
@@ -118,6 +132,390 @@ function DeleteItemButton({
         </form>
       )}
     </div>
+  );
+}
+
+function DormitoryRow({ dorm }: { dorm: ApiDormitory }) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    updateMasterDormitoryAction,
+    INITIAL_STATE,
+  );
+
+  if (editing) {
+    return (
+      <tr className="bg-indigo-50/30">
+        <td colSpan={5} className="p-3">
+          <ActionResultToast state={state} />
+          <form action={formAction} className="grid gap-2 sm:grid-cols-6">
+            <input type="hidden" name="recordId" value={dorm.id} />
+            <input type="hidden" name="billingDay" value={dorm.billingDay} />
+            <input type="hidden" name="paymentDueDay" value={dorm.paymentDueDay} />
+            <input
+              name="code"
+              defaultValue={dorm.code}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="name"
+              defaultValue={dorm.name}
+              required
+              className={cn(COMPACT_INPUT_CLASSES, "sm:col-span-2")}
+            />
+            <input
+              name="waterRatePerUnit"
+              type="number"
+              min={0}
+              step="any"
+              defaultValue={dorm.waterRatePerUnit}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="electricityRatePerUnit"
+              type="number"
+              min={0}
+              step="any"
+              defaultValue={dorm.electricityRatePerUnit}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {pending ? (
+                  <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-3" aria-hidden="true" />
+                )}
+                {t.common.save}
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
+        {dorm.code}
+      </td>
+      <td className="px-3 py-2.5 font-medium text-slate-900">{dorm.name}</td>
+      <td className="px-3 py-2.5">{formatCurrency(dorm.waterRatePerUnit)}</td>
+      <td className="px-3 py-2.5">
+        {formatCurrency(dorm.electricityRatePerUnit)}
+      </td>
+      <td className="px-3 py-2.5 text-right">
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Pencil className="size-3" aria-hidden="true" />
+            {t.management.workflows.edit}
+          </button>
+          <DeleteItemButton resource="dormitories" recordId={dorm.id} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function BuildingRow({
+  building,
+  dormitoryLabel,
+}: {
+  building: ApiBuilding;
+  dormitoryLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    updateMasterBuildingAction,
+    INITIAL_STATE,
+  );
+
+  if (editing) {
+    return (
+      <tr className="bg-indigo-50/30">
+        <td colSpan={4} className="p-3">
+          <ActionResultToast state={state} />
+          <form action={formAction} className="grid gap-2 sm:grid-cols-5">
+            <input type="hidden" name="recordId" value={building.id} />
+            <input
+              name="code"
+              defaultValue={building.code}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="name"
+              defaultValue={building.name}
+              required
+              className={cn(COMPACT_INPUT_CLASSES, "sm:col-span-2")}
+            />
+            <input
+              name="totalFloors"
+              type="number"
+              min={1}
+              max={50}
+              defaultValue={3}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {pending ? (
+                  <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-3" aria-hidden="true" />
+                )}
+                {t.common.save}
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
+        {building.code}
+      </td>
+      <td className="px-3 py-2.5 font-medium text-slate-900">{building.name}</td>
+      <td className="px-3 py-2.5">{dormitoryLabel}</td>
+      <td className="px-3 py-2.5 text-right">
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Pencil className="size-3" aria-hidden="true" />
+            {t.management.workflows.edit}
+          </button>
+          <DeleteItemButton resource="buildings" recordId={building.id} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function FloorRow({
+  floor,
+  buildingLabel,
+}: {
+  floor: ApiFloor;
+  buildingLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    updateMasterFloorAction,
+    INITIAL_STATE,
+  );
+
+  if (editing) {
+    return (
+      <tr className="bg-indigo-50/30">
+        <td colSpan={4} className="p-3">
+          <ActionResultToast state={state} />
+          <form action={formAction} className="grid gap-2 sm:grid-cols-4">
+            <input type="hidden" name="recordId" value={floor.id} />
+            <input
+              name="floorNumber"
+              type="number"
+              min={0}
+              max={100}
+              defaultValue={floor.floorNumber}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="name"
+              defaultValue={floor.name || `ຊັ້ນ ${floor.floorNumber}`}
+              className={cn(COMPACT_INPUT_CLASSES, "sm:col-span-2")}
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {pending ? (
+                  <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-3" aria-hidden="true" />
+                )}
+                {t.common.save}
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
+        {floor.floorNumber}
+      </td>
+      <td className="px-3 py-2.5 font-medium text-slate-900">
+        {floor.name || `ຊັ້ນ ${floor.floorNumber}`}
+      </td>
+      <td className="px-3 py-2.5">{buildingLabel}</td>
+      <td className="px-3 py-2.5 text-right">
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Pencil className="size-3" aria-hidden="true" />
+            {t.management.workflows.edit}
+          </button>
+          <DeleteItemButton resource="floors" recordId={floor.id} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function RoomTypeRow({ roomType }: { roomType: ApiRoomType }) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    updateMasterRoomTypeAction,
+    INITIAL_STATE,
+  );
+
+  if (editing) {
+    return (
+      <tr className="bg-indigo-50/30">
+        <td colSpan={5} className="p-3">
+          <ActionResultToast state={state} />
+          <form action={formAction} className="grid gap-2 sm:grid-cols-6">
+            <input type="hidden" name="recordId" value={roomType.id} />
+            <input
+              type="hidden"
+              name="maximumOccupants"
+              value={roomType.maximumOccupants}
+            />
+            <input
+              name="code"
+              defaultValue={roomType.code}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="name"
+              defaultValue={roomType.name}
+              required
+              className={cn(COMPACT_INPUT_CLASSES, "sm:col-span-2")}
+            />
+            <input
+              name="monthlyRent"
+              type="number"
+              min={0}
+              step="any"
+              defaultValue={roomType.monthlyRent}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <input
+              name="depositAmount"
+              type="number"
+              min={0}
+              step="any"
+              defaultValue={roomType.depositAmount}
+              required
+              className={COMPACT_INPUT_CLASSES}
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {pending ? (
+                  <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-3" aria-hidden="true" />
+                )}
+                {t.common.save}
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
+        {roomType.code}
+      </td>
+      <td className="px-3 py-2.5 font-medium text-slate-900">
+        {roomType.name}
+      </td>
+      <td className="px-3 py-2.5 font-medium text-emerald-700">
+        {formatCurrency(roomType.monthlyRent)}
+      </td>
+      <td className="px-3 py-2.5">{formatCurrency(roomType.depositAmount)}</td>
+      <td className="px-3 py-2.5 text-right">
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Pencil className="size-3" aria-hidden="true" />
+            {t.management.workflows.edit}
+          </button>
+          <DeleteItemButton resource="room-types" recordId={roomType.id} />
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -357,23 +755,7 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {dormitories.map((dorm) => (
-                      <tr key={dorm.id}>
-                        <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
-                          {dorm.code}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-slate-900">
-                          {dorm.name}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {formatCurrency(dorm.waterRatePerUnit)}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {formatCurrency(dorm.electricityRatePerUnit)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          <DeleteItemButton resource="dormitories" recordId={dorm.id} />
-                        </td>
-                      </tr>
+                      <DormitoryRow key={dorm.id} dorm={dorm} />
                     ))}
                   </tbody>
                 </table>
@@ -487,20 +869,14 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {buildings.map((b) => (
-                      <tr key={b.id}>
-                        <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
-                          {b.code}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-slate-900">
-                          {b.name}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {dormNameById.get(b.dormitoryId) ?? b.dormitoryId.slice(0, 8)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          <DeleteItemButton resource="buildings" recordId={b.id} />
-                        </td>
-                      </tr>
+                      <BuildingRow
+                        key={b.id}
+                        building={b}
+                        dormitoryLabel={
+                          dormNameById.get(b.dormitoryId) ??
+                          b.dormitoryId.slice(0, 8)
+                        }
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -669,21 +1045,14 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
                     {[...floors]
                       .sort((a, b) => a.floorNumber - b.floorNumber)
                       .map((f) => (
-                        <tr key={f.id}>
-                          <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
-                            {f.floorNumber}
-                          </td>
-                          <td className="px-3 py-2.5 font-medium text-slate-900">
-                            {f.name || `ຊັ້ນ ${f.floorNumber}`}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            {buildingNameById.get(f.buildingId) ??
-                              f.buildingId.slice(0, 8)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <DeleteItemButton resource="floors" recordId={f.id} />
-                          </td>
-                        </tr>
+                        <FloorRow
+                          key={f.id}
+                          floor={f}
+                          buildingLabel={
+                            buildingNameById.get(f.buildingId) ??
+                            f.buildingId.slice(0, 8)
+                          }
+                        />
                       ))}
                   </tbody>
                 </table>
@@ -815,23 +1184,7 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {roomTypes.map((rt) => (
-                      <tr key={rt.id}>
-                        <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
-                          {rt.code}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-slate-900">
-                          {rt.name}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-emerald-700">
-                          {formatCurrency(rt.monthlyRent)}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {formatCurrency(rt.depositAmount)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          <DeleteItemButton resource="room-types" recordId={rt.id} />
-                        </td>
-                      </tr>
+                      <RoomTypeRow key={rt.id} roomType={rt} />
                     ))}
                   </tbody>
                 </table>

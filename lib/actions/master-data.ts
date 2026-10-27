@@ -20,6 +20,7 @@ function revalidateAllMasterDataPages() {
   revalidatePath("/settings");
   revalidatePath("/management");
   revalidatePath("/management/properties");
+  revalidatePath("/management/properties/organizations");
   revalidatePath("/management/properties/dormitories");
   revalidatePath("/management/properties/buildings");
   revalidatePath("/management/properties/floors");
@@ -68,13 +69,93 @@ export async function createMasterDormitoryAction(
   }
 
   try {
-    const organizationId = await resolveDefaultOrganizationId(
+    let organizationId = await resolveDefaultOrganizationId(
       session.user.organizationId,
     );
-    await apiRequest("/dormitories", {
+    if (!organizationId) {
+      const createdOrg = await apiRequest<{ id: string }>("/organizations", {
+        method: "POST",
+        body: {
+          code: `ORG-${code}`,
+          name,
+        },
+      });
+      organizationId = createdOrg.id;
+    }
+
+    const createdDorm = await apiRequest<{ id: string }>("/dormitories", {
       method: "POST",
       body: {
         ...(organizationId ? { organizationId } : {}),
+        code,
+        name,
+        billingDay: Math.floor(billingDay),
+        paymentDueDay: Math.floor(paymentDueDay),
+        waterRatePerUnit,
+        electricityRatePerUnit,
+        lateFeeType: "Fixed",
+        lateFeeAmount: 0,
+      },
+    });
+
+    if (createdDorm?.id && session.user.id) {
+      try {
+        await apiRequest(
+          `/users/${encodeURIComponent(session.user.id)}/dormitories`,
+          {
+            method: "POST",
+            body: { dormitoryId: createdDorm.id, isPrimary: true },
+          },
+        );
+      } catch {
+        // Best-effort dormitory assignment for current user.
+      }
+    }
+
+    revalidateAllMasterDataPages();
+    return { status: "success", message: t.masterData.actions.successCreated };
+  } catch (error) {
+    return { status: "error", message: errorMessage(error) };
+  }
+}
+
+export async function updateMasterDormitoryAction(
+  _prevState: MasterDataActionState,
+  formData: FormData,
+): Promise<MasterDataActionState> {
+  await verifySession();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  const code = String(formData.get("code") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const billingDay = Number(formData.get("billingDay") || 1);
+  const paymentDueDay = Number(formData.get("paymentDueDay") || 5);
+  const waterRatePerUnit = Number(formData.get("waterRatePerUnit") || 0);
+  const electricityRatePerUnit = Number(
+    formData.get("electricityRatePerUnit") || 0,
+  );
+
+  if (
+    !/^[0-9a-f-]{36}$/iu.test(recordId) ||
+    !code ||
+    !name ||
+    !Number.isFinite(billingDay) ||
+    billingDay < 1 ||
+    billingDay > 28 ||
+    !Number.isFinite(paymentDueDay) ||
+    paymentDueDay < 1 ||
+    paymentDueDay > 28 ||
+    !Number.isFinite(waterRatePerUnit) ||
+    waterRatePerUnit < 0 ||
+    !Number.isFinite(electricityRatePerUnit) ||
+    electricityRatePerUnit < 0
+  ) {
+    return { status: "error", message: t.masterData.actions.errorRequired };
+  }
+
+  try {
+    await apiRequest(`/dormitories/${encodeURIComponent(recordId)}`, {
+      method: "PUT",
+      body: {
         code,
         name,
         billingDay: Math.floor(billingDay),
@@ -149,6 +230,43 @@ export async function createMasterBuildingAction(
   }
 }
 
+export async function updateMasterBuildingAction(
+  _prevState: MasterDataActionState,
+  formData: FormData,
+): Promise<MasterDataActionState> {
+  await verifySession();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  const code = String(formData.get("code") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const totalFloors = Math.floor(Number(formData.get("totalFloors") || 1));
+
+  if (
+    !/^[0-9a-f-]{36}$/iu.test(recordId) ||
+    !code ||
+    !name ||
+    !Number.isFinite(totalFloors) ||
+    totalFloors < 1 ||
+    totalFloors > 50
+  ) {
+    return { status: "error", message: t.masterData.actions.errorRequired };
+  }
+
+  try {
+    await apiRequest(`/buildings/${encodeURIComponent(recordId)}`, {
+      method: "PUT",
+      body: {
+        code,
+        name,
+        totalFloors,
+      },
+    });
+    revalidateAllMasterDataPages();
+    return { status: "success", message: t.masterData.actions.successCreated };
+  } catch (error) {
+    return { status: "error", message: errorMessage(error) };
+  }
+}
+
 export async function createMasterFloorAction(
   _prevState: MasterDataActionState,
   formData: FormData,
@@ -172,6 +290,39 @@ export async function createMasterFloorAction(
       method: "POST",
       body: {
         buildingId,
+        floorNumber,
+        name: rawName || `ຊັ້ນ ${floorNumber}`,
+      },
+    });
+    revalidateAllMasterDataPages();
+    return { status: "success", message: t.masterData.actions.successCreated };
+  } catch (error) {
+    return { status: "error", message: errorMessage(error) };
+  }
+}
+
+export async function updateMasterFloorAction(
+  _prevState: MasterDataActionState,
+  formData: FormData,
+): Promise<MasterDataActionState> {
+  await verifySession();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  const floorNumber = Math.floor(Number(formData.get("floorNumber")));
+  const rawName = String(formData.get("name") ?? "").trim();
+
+  if (
+    !/^[0-9a-f-]{36}$/iu.test(recordId) ||
+    !Number.isFinite(floorNumber) ||
+    floorNumber < 0 ||
+    floorNumber > 100
+  ) {
+    return { status: "error", message: t.masterData.actions.errorRequired };
+  }
+
+  try {
+    await apiRequest(`/floors/${encodeURIComponent(recordId)}`, {
+      method: "PUT",
+      body: {
         floorNumber,
         name: rawName || `ຊັ້ນ ${floorNumber}`,
       },
@@ -266,6 +417,52 @@ export async function createMasterRoomTypeAction(
       method: "POST",
       body: {
         dormitoryId,
+        code,
+        name,
+        monthlyRent,
+        depositAmount,
+        maximumOccupants,
+      },
+    });
+    revalidateAllMasterDataPages();
+    return { status: "success", message: t.masterData.actions.successCreated };
+  } catch (error) {
+    return { status: "error", message: errorMessage(error) };
+  }
+}
+
+export async function updateMasterRoomTypeAction(
+  _prevState: MasterDataActionState,
+  formData: FormData,
+): Promise<MasterDataActionState> {
+  await verifySession();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  const code = String(formData.get("code") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const monthlyRent = Number(formData.get("monthlyRent"));
+  const depositAmount = Number(formData.get("depositAmount") || 0);
+  const maximumOccupants = Math.floor(
+    Number(formData.get("maximumOccupants") || 2),
+  );
+
+  if (
+    !/^[0-9a-f-]{36}$/iu.test(recordId) ||
+    !code ||
+    !name ||
+    !Number.isFinite(monthlyRent) ||
+    monthlyRent < 0 ||
+    !Number.isFinite(depositAmount) ||
+    depositAmount < 0 ||
+    !Number.isFinite(maximumOccupants) ||
+    maximumOccupants < 1
+  ) {
+    return { status: "error", message: t.masterData.actions.errorRequired };
+  }
+
+  try {
+    await apiRequest(`/room-types/${encodeURIComponent(recordId)}`, {
+      method: "PUT",
+      body: {
         code,
         name,
         monthlyRent,
