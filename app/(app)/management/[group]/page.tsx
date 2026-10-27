@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { ManagementGroupCards } from "@/components/management/management-group-cards";
+import { MasterDataManager } from "@/components/management/master-data-manager";
+import { getRoomCreationOptions } from "@/lib/api/dormflow";
 import { t } from "@/lib/i18n";
 import { MANAGEMENT_GROUPS, getManagementGroup } from "@/lib/management";
 
@@ -31,6 +33,8 @@ export default async function ManagementGroupPage({
   if (!group) notFound();
 
   const Icon = group.icon;
+  const masterDataOptions =
+    slug === "properties" ? await getRoomCreationOptions() : null;
 
   return (
     <section className="space-y-6">
@@ -52,6 +56,9 @@ export default async function ManagementGroupPage({
           <p className="max-w-2xl text-sm text-slate-500">{group.description}</p>
         </div>
       </header>
+      {masterDataOptions ? (
+        <MasterDataManager options={masterDataOptions} embedded />
+      ) : null}
       <ManagementGroupCards group={group} />
     </section>
   );

@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils";
 import { RoomDetailDrawer, type UtilityRates } from "./room-detail-drawer";
 import { StatusBadge } from "./status-badge";
+import type { RoomCreationOptions } from "@/lib/api/dormflow";
 import type { Room, RoomStatus, Tenant, UtilityReading } from "@/types";
 
 export interface RoomItem extends Room {
@@ -27,6 +28,7 @@ interface RoomInventoryViewProps {
   readingsByRoomId: Record<string, UtilityReading[]>;
   /** Utility pricing in use, shown in the drawer. */
   rates: UtilityRates;
+  options?: RoomCreationOptions;
 }
 
 /** Legend order, also used by the status filter control. */
@@ -114,6 +116,7 @@ export function RoomInventoryView({
   tenantsByRoomId,
   readingsByRoomId,
   rates,
+  options,
 }: RoomInventoryViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -458,6 +461,7 @@ export function RoomInventoryView({
           tenant={tenantsByRoomId[selectedRoom.id] ?? null}
           readings={readingsByRoomId[selectedRoom.id] ?? []}
           rates={rates}
+          options={options}
           onClose={closeRoom}
         />
       ) : null}

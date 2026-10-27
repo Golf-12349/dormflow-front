@@ -63,6 +63,8 @@ export interface ApiRoomType {
 }
 
 export interface RoomCreationOptions {
+  organizations?: ApiOrganization[];
+  dormitories?: ApiDormitory[];
   buildings: ApiBuilding[];
   floors: ApiFloor[];
   roomTypes: ApiRoomType[];
@@ -130,7 +132,7 @@ interface ApiMeterReading {
   createdAt: string;
 }
 
-interface ApiDormitory {
+export interface ApiDormitory {
   id: string;
   organizationId: string;
   code: string;
@@ -1006,12 +1008,15 @@ export async function getRoomCreationOptions(): Promise<RoomCreationOptions> {
       return [];
     }
   };
-  const [buildings, floors, roomTypes] = await Promise.all([
-    safeGet<ApiBuilding>("/buildings"),
-    safeGet<ApiFloor>("/floors"),
-    safeGet<ApiRoomType>("/room-types"),
-  ]);
-  return { buildings, floors, roomTypes };
+  const [organizations, dormitories, buildings, floors, roomTypes] =
+    await Promise.all([
+      safeGet<ApiOrganization>("/organizations"),
+      safeGet<ApiDormitory>("/dormitories"),
+      safeGet<ApiBuilding>("/buildings"),
+      safeGet<ApiFloor>("/floors"),
+      safeGet<ApiRoomType>("/room-types"),
+    ]);
+  return { organizations, dormitories, buildings, floors, roomTypes };
 }
 
 export async function createRoom(input: {
@@ -1184,6 +1189,8 @@ export async function updateRoomDetails(
     roomNumber: string;
     monthlyRent: number;
     description?: string | null;
+    floorId?: string | null;
+    roomTypeId?: string | null;
   },
 ): Promise<{ success: true; room: Room } | { success: false; error: string }> {
   try {
@@ -1196,8 +1203,8 @@ export async function updateRoomDetails(
       {
         method: "PUT",
         body: {
-          floorId: existing.floorId,
-          roomTypeId: existing.roomTypeId,
+          floorId: input.floorId?.trim() || existing.floorId,
+          roomTypeId: input.roomTypeId?.trim() || existing.roomTypeId,
           roomNumber: input.roomNumber.trim(),
           monthlyRent: input.monthlyRent,
           depositAmount: existing.depositAmount ?? 0,

@@ -237,6 +237,8 @@ export async function updateRoomDetailsAction(
   const roomNumber = String(formData.get("roomNumber") ?? "").trim();
   const rawMonthlyRent = String(formData.get("monthlyRent") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
+  const floorId = String(formData.get("floorId") ?? "").trim() || null;
+  const roomTypeId = String(formData.get("roomTypeId") ?? "").trim() || null;
 
   if (!roomId) {
     return { status: "error", message: t.rooms.errors.roomIdRequired };
@@ -254,6 +256,8 @@ export async function updateRoomDetailsAction(
     roomNumber,
     monthlyRent,
     description,
+    floorId,
+    roomTypeId,
   });
 
   if (!result.success) {

@@ -18,6 +18,7 @@ import {
   deleteRoomAction,
   updateRoomDetailsAction,
 } from "@/lib/actions/rooms";
+import type { RoomCreationOptions } from "@/lib/api/dormflow";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
@@ -50,6 +51,7 @@ interface RoomDetailDrawerProps {
   /** Meter history for this room, newest period first. */
   readings: UtilityReading[];
   rates: UtilityRates;
+  options?: RoomCreationOptions;
   /** Closes the drawer; the parent returns focus to the room that opened it. */
   onClose: () => void;
 }
@@ -85,6 +87,7 @@ export function RoomDetailDrawer({
   tenant,
   readings,
   rates,
+  options,
   onClose,
 }: RoomDetailDrawerProps) {
   const titleId = useId();
@@ -247,6 +250,49 @@ export function RoomDetailDrawer({
                 noValidate
               >
                 <input type="hidden" name="roomId" value={room.id} />
+                {options && options.floors.length > 0 ? (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">
+                      {t.rooms.add.floor}
+                    </label>
+                    <select
+                      name="floorId"
+                      defaultValue={
+                        options.floors.find((f) => f.floorNumber === room.floor)
+                          ?.id ?? ""
+                      }
+                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      <option value="">—</option>
+                      {[...options.floors]
+                        .sort((a, b) => a.floorNumber - b.floorNumber)
+                        .map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.name || `ຊັ້ນ ${f.floorNumber}`}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ) : null}
+                {options && options.roomTypes.length > 0 ? (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">
+                      {t.rooms.add.roomType}
+                    </label>
+                    <select
+                      name="roomTypeId"
+                      defaultValue=""
+                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      <option value="">—</option>
+                      {options.roomTypes.map((rt) => (
+                        <option key={rt.id} value={rt.id}>
+                          {rt.code} — {rt.name} ({formatCurrency(rt.monthlyRent)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
                 <div>
                   <label className="block text-xs font-medium text-slate-700">
                     {t.rooms.add.roomNumber} *
