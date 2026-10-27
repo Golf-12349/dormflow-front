@@ -21,6 +21,7 @@ import {
   getRoomById,
   getTenantById,
   updateTenantContact,
+  updateTenantStatus,
 } from "@/lib/api/dormflow";
 import type {
   AddTenantFormState,
@@ -387,5 +388,38 @@ export async function assignTenantRoomAction(
       result.tenant.fullName,
       result.room.number,
     ),
+  };
+}
+
+export async function updateTenantStatusAction(
+  _prevState: CheckOutTenantFormState,
+  formData: FormData,
+): Promise<CheckOutTenantFormState> {
+  const tenantId = readField(formData, "tenantId");
+  const status = readField(formData, "status");
+
+  if (!tenantId) {
+    return { status: "error", message: t.tenants.errors.tenantIdRequired };
+  }
+  if (
+    status !== "Active" &&
+    status !== "Inactive" &&
+    status !== "Blacklisted"
+  ) {
+    return { status: "error", message: t.management.workflows.required };
+  }
+
+  const result = await updateTenantStatus(tenantId, status);
+  if (!result.success) {
+    return { status: "error", message: localizeDataLayerError(result.error) };
+  }
+
+  revalidatePath("/tenants");
+  revalidatePath("/dashboard");
+  revalidatePath("/management");
+
+  return {
+    status: "success",
+    message: t.tenants.profile.statusAction.success(result.tenant.fullName),
   };
 }

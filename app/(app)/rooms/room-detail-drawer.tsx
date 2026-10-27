@@ -8,12 +8,14 @@ import {
   Loader2,
   Pencil,
   Save,
+  Trash2,
   Wrench,
   X,
 } from "lucide-react";
 
 import {
   changeRoomStatusAction,
+  deleteRoomAction,
   updateRoomDetailsAction,
 } from "@/lib/actions/rooms";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -89,6 +91,7 @@ export function RoomDetailDrawer({
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   const [isEditingRoom, setIsEditingRoom] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const [statusState, formAction, isPending] = useActionState(
     changeRoomStatusAction,
@@ -97,6 +100,11 @@ export function RoomDetailDrawer({
 
   const [editState, editFormAction, isEditPending] = useActionState(
     updateRoomDetailsAction,
+    INITIAL_ROOM_STATUS_STATE,
+  );
+
+  const [deleteState, deleteFormAction, isDeletePending] = useActionState(
+    deleteRoomAction,
     INITIAL_ROOM_STATUS_STATE,
   );
 
@@ -511,6 +519,69 @@ export function RoomDetailDrawer({
               ) : null}
             </div>
           </section>
+
+          {room.status === "vacant" || room.status === "maintenance" ? (
+            <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4">
+              <h3 className={cn(SECTION_TITLE, "text-rose-700")}>
+                {t.rooms.delete.sectionTitle}
+              </h3>
+              {!isConfirmingDelete ? (
+                <>
+                  <p className="mt-2 text-xs text-slate-600">
+                    {t.rooms.delete.hint}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                    {t.rooms.delete.trigger}
+                  </button>
+                </>
+              ) : (
+                <form action={deleteFormAction} className="mt-3 space-y-3">
+                  <input type="hidden" name="roomId" value={room.id} />
+                  <p className="text-sm text-slate-700">
+                    {t.rooms.delete.confirmPrompt(room.number)}
+                  </p>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingDelete(false)}
+                      className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-white"
+                    >
+                      {t.rooms.edit.cancel}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isDeletePending}
+                      className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:opacity-60"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      <span>
+                        {isDeletePending
+                          ? t.rooms.delete.deleting
+                          : t.rooms.delete.confirm}
+                      </span>
+                    </button>
+                  </div>
+                  {deleteState.message ? (
+                    <p
+                      className={cn(
+                        "text-xs font-medium",
+                        deleteState.status === "error"
+                          ? "text-rose-600"
+                          : "text-emerald-700",
+                      )}
+                    >
+                      {deleteState.message}
+                    </p>
+                  ) : null}
+                </form>
+              )}
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

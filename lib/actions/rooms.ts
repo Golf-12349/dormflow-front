@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { t } from "@/lib/i18n";
 import {
   createRoom,
+  deleteRoom,
   getRoomById,
   updateRoomDetails,
   updateRoomStatus,
@@ -271,5 +272,45 @@ export async function updateRoomDetailsAction(
   return {
     status: "success",
     message: t.rooms.edit.success(result.room.number),
+  };
+}
+
+export async function deleteRoomAction(
+  _prevState: RoomStatusFormState,
+  formData: FormData,
+): Promise<RoomStatusFormState> {
+  const roomId = String(formData.get("roomId") ?? "").trim();
+  if (!roomId) {
+    return { status: "error", message: t.rooms.errors.roomIdRequired };
+  }
+
+  const room = await getRoomById(roomId);
+  if (!room) {
+    return { status: "error", message: t.rooms.errors.roomNotFound };
+  }
+  if (room.status === "occupied" || room.status === "reserved") {
+    return {
+      status: "error",
+      message: t.rooms.errors.statusLocked(ROOM_STATUS_LABELS[room.status]),
+    };
+  }
+
+  const result = await deleteRoom(roomId);
+  if (!result.success) {
+    return {
+      status: "error",
+      message: localizeDataLayerError(result.error),
+    };
+  }
+
+  revalidatePath("/rooms");
+  revalidatePath("/dashboard");
+  revalidatePath("/tenants");
+  revalidatePath("/billing");
+  revalidatePath("/management");
+
+  return {
+    status: "success",
+    message: t.rooms.delete.success(room.number),
   };
 }

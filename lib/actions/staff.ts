@@ -217,3 +217,64 @@ export async function changeStaffStatusAction(
     return actionError(error);
   }
 }
+
+export async function upsertOrganizationSettingAction(
+  _previousState: StaffActionState,
+  formData: FormData,
+): Promise<StaffActionState> {
+  const session = await verifySession();
+  const key = readField(formData, "key");
+  const value = readField(formData, "value");
+
+  if (!key || !/^[a-zA-Z0-9._-]{1,100}$/u.test(key)) {
+    return { status: "error", message: t.settings.orgSettings.invalidKey };
+  }
+  if (!value) {
+    return { status: "error", message: t.management.workflows.required };
+  }
+
+  const organizationId = await resolveDefaultOrganizationId(
+    readField(formData, "organizationId") || session.user.organizationId,
+  );
+
+  try {
+    await apiRequest(`/settings/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: {
+        value,
+        ...(organizationId ? { organizationId } : {}),
+      },
+    });
+    revalidatePath("/settings");
+    return { status: "success", message: t.settings.orgSettings.success };
+  } catch (error) {
+    unstable_rethrow(error);
+    return actionError(error);
+  }
+}
+
+export async function deleteOrganizationSettingAction(
+  _previousState: StaffActionState,
+  formData: FormData,
+): Promise<StaffActionState> {
+  const session = await verifySession();
+  const key = readField(formData, "key");
+  if (!key || !/^[a-zA-Z0-9._-]{1,100}$/u.test(key)) {
+    return { status: "error", message: t.settings.orgSettings.invalidKey };
+  }
+  const organizationId = await resolveDefaultOrganizationId(
+    readField(formData, "organizationId") || session.user.organizationId,
+  );
+
+  try {
+    await apiRequest(`/settings/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      query: organizationId ? { organizationId } : undefined,
+    });
+    revalidatePath("/settings");
+    return { status: "success", message: t.settings.orgSettings.deleteSuccess };
+  } catch (error) {
+    unstable_rethrow(error);
+    return actionError(error);
+  }
+}

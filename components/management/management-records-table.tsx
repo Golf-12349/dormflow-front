@@ -2,8 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, Database } from "lucide-react";
 
 import type { ManagementGroup, ManagementModule } from "@/lib/management";
-import type { ManagementRecords } from "@/lib/api/management";
+import type { AnalyticsOverview, ManagementRecords } from "@/lib/api/management";
 import { t } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/utils";
 import {
   MANAGEMENT_CREATE_FIELDS,
   MANAGEMENT_OPERATIONS,
@@ -117,6 +118,9 @@ export function ManagementRecordsTable({
   module,
   records,
   relatedRecords,
+  detailReportRecords,
+  analyticsOverview,
+  unreadNotificationCount,
   reportPeriod,
   lookupOptions,
 }: {
@@ -124,7 +128,10 @@ export function ManagementRecordsTable({
   module: ManagementModule;
   records: ManagementRecords;
   relatedRecords?: ManagementRecords;
-  reportPeriod?: { periodFrom: string; periodTo: string };
+  detailReportRecords?: ManagementRecords;
+  analyticsOverview?: AnalyticsOverview | null;
+  unreadNotificationCount?: number;
+  reportPeriod?: { periodFrom: string; periodTo: string; detailReport?: string };
   lookupOptions?: Record<string, ManagementSelectOption[]>;
 }) {
   const createFields = enrichFields(
@@ -137,9 +144,15 @@ export function ManagementRecordsTable({
   const reportFromDefault = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 11, 1)).toISOString().slice(0, 10);
   const periodFrom = reportPeriod?.periodFrom || reportFromDefault;
   const periodTo = reportPeriod?.periodTo || reportToDefault;
+  const detailReport = reportPeriod?.detailReport || "expenses";
   const outstandingColumns = relatedRecords
     ? [...new Set(relatedRecords.items.flatMap((item) => Object.keys(item)))]
         .filter((key) => !isInternalField(key, relatedRecords.items, lookupOptions))
+        .slice(0, 8)
+    : [];
+  const detailReportColumns = detailReportRecords
+    ? [...new Set(detailReportRecords.items.flatMap((item) => Object.keys(item)))]
+        .filter((key) => !isInternalField(key, detailReportRecords.items, lookupOptions))
         .slice(0, 8)
     : [];
   const keys = [...new Set(records.items.flatMap((item) => Object.keys(item)))]
@@ -166,10 +179,68 @@ export function ManagementRecordsTable({
           </h2>
           <p className="max-w-2xl text-sm text-slate-500">{module.description}</p>
         </div>
-        <p className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-          {t.management.table.itemCount(records.totalCount.toLocaleString())}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {module.slug === "notifications" && typeof unreadNotificationCount === "number" ? (
+            <>
+              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
+                {t.management.workflows.unreadBadge(unreadNotificationCount)}
+              </span>
+              {unreadNotificationCount > 0 ? (
+                <ManagementWorkflowForm
+                  compact
+                  resource="notifications"
+                  operation="readAll"
+                  fields={[]}
+                  submitLabel={t.management.workflows.readAll}
+                />
+              ) : null}
+            </>
+          ) : null}
+          <p className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+            {t.management.table.itemCount(records.totalCount.toLocaleString())}
+          </p>
+        </div>
       </header>
+
+      {module.slug === "reports" && analyticsOverview ? (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-slate-700">
+            {t.management.workflows.analyticsTitle}
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-slate-500">{t.management.table.fields.revenue}</p>
+              <p className="mt-1 text-base font-semibold text-emerald-700">
+                {formatCurrency(analyticsOverview.revenue)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-slate-500">{t.management.workflows.analyticsExpenses}</p>
+              <p className="mt-1 text-base font-semibold text-rose-700">
+                {formatCurrency(analyticsOverview.expenses)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-slate-500">{t.management.workflows.analyticsNetCash}</p>
+              <p className="mt-1 text-base font-semibold text-indigo-700">
+                {formatCurrency(analyticsOverview.netOperatingCash)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-slate-500">{t.management.workflows.analyticsOutstanding}</p>
+              <p className="mt-1 text-base font-semibold text-amber-700">
+                {formatCurrency(analyticsOverview.outstanding)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-slate-500">{t.management.workflows.analyticsExpiring}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {analyticsOverview.expiringContracts.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {createFields ? (
         <ManagementWorkflowForm
@@ -209,6 +280,20 @@ export function ManagementRecordsTable({
                 defaultValue={periodTo}
                 className="mt-1 block rounded-lg border border-slate-300 px-3 py-2"
               />
+            </label>
+            <label className="text-sm text-slate-700">
+              {t.management.workflows.detailReportLabel}
+              <select
+                name="detailReport"
+                defaultValue={detailReport}
+                className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2"
+              >
+                <option value="expenses">{t.management.workflows.detailReportTypes.expenses}</option>
+                <option value="occupancy">{t.management.workflows.detailReportTypes.occupancy}</option>
+                <option value="payments">{t.management.workflows.detailReportTypes.payments}</option>
+                <option value="aging">{t.management.workflows.detailReportTypes.aging}</option>
+                <option value="revenue">{t.management.workflows.detailReportTypes.revenue}</option>
+              </select>
             </label>
             <button className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">
               {t.management.workflows.filter}
@@ -392,6 +477,51 @@ export function ManagementRecordsTable({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
+      {detailReportRecords ? (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-slate-900">
+              {t.management.workflows.detailReportLabel}:{" "}
+              {t.management.workflows.detailReportTypes[
+                detailReport as keyof typeof t.management.workflows.detailReportTypes
+              ] ?? detailReport}
+            </h3>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+              {t.management.table.itemCount(detailReportRecords.totalCount.toLocaleString())}
+            </span>
+          </div>
+          {detailReportRecords.items.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
+              {t.management.table.emptyTitle}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full min-w-[40rem] text-left text-sm">
+                <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                  <tr>
+                    {detailReportColumns.map((key) => (
+                      <th key={key} scope="col" className="whitespace-nowrap px-3 py-2.5">
+                        {labelFor(key)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detailReportRecords.items.map((item, index) => (
+                    <tr key={String(item.id ?? index)}>
+                      {detailReportColumns.map((key) => (
+                        <td key={key} className="max-w-72 px-3 py-2.5 text-slate-700">
+                          {displayValue(item[key], key, lookupOptions)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

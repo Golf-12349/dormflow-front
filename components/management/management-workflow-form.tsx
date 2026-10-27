@@ -274,11 +274,17 @@ export function ManagementReportExportForm({
       <select
         name="report"
         aria-label={t.management.modules.reports.title}
-        className="rounded-lg border border-slate-300 px-3 py-2"
-        onChange={(event) => setFilename(event.target.value === "revenue" ? "revenue-report.csv" : "outstanding-invoices.csv")}
+        className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        onChange={(event) =>
+          setFilename(`${event.target.value}-report.csv`)
+        }
       >
-        <option value="revenue">{t.management.modules.reports.title}</option>
+        <option value="revenue">{t.management.workflows.detailReportTypes.revenue}</option>
         <option value="outstanding-invoices">{t.management.modules.invoices.title}</option>
+        <option value="expenses">{t.management.workflows.detailReportTypes.expenses}</option>
+        <option value="occupancy">{t.management.workflows.detailReportTypes.occupancy}</option>
+        <option value="payments">{t.management.workflows.detailReportTypes.payments}</option>
+        <option value="aging">{t.management.workflows.detailReportTypes.aging}</option>
       </select>
       <button disabled={pending} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
         {pending ? t.common.loading : t.management.workflows.export}

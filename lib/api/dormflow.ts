@@ -1167,7 +1167,6 @@ export async function getSettings(): Promise<ApiSetting[]> {
   return getAll<ApiSetting>("/settings");
 }
 
-
 interface ApiRoomDetail extends ApiRoom {
   floorId: string;
   roomTypeId: string;
@@ -1213,6 +1212,125 @@ export async function updateRoomDetails(
     );
     const contracts = await getApiContracts();
     return { success: true, room: mapRoom(updated, contracts) };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function deleteRoom(
+  roomId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    await apiRequest(`/rooms/${encodeURIComponent(roomId)}`, {
+      method: "DELETE",
+    });
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function getAvailableRooms(): Promise<Room[]> {
+  try {
+    const [rooms, contracts] = await Promise.all([
+      getAll<ApiRoom>("/rooms/available"),
+      getApiContracts(),
+    ]);
+    return rooms.map((room) => mapRoom(room, contracts));
+  } catch {
+    const rooms = await getMappedRooms();
+    return rooms.filter((room) => room.status === "vacant");
+  }
+}
+
+export async function getRoomSummary(): Promise<{
+  totalRooms: number;
+  availableCount: number;
+  occupiedCount: number;
+  reservedCount: number;
+  maintenanceCount: number;
+}> {
+  try {
+    return await apiRequest("/rooms/summary", { cache: "no-store" });
+  } catch {
+    return {
+      totalRooms: 0,
+      availableCount: 0,
+      occupiedCount: 0,
+      reservedCount: 0,
+      maintenanceCount: 0,
+    };
+  }
+}
+
+export interface TenantLeaseHistoryItem {
+  contractId: string;
+  roomId: string;
+  contractNumber: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  moveInAt?: string | null;
+  moveOutAt?: string | null;
+}
+
+export async function getTenantHistory(
+  tenantId: string,
+): Promise<TenantLeaseHistoryItem[]> {
+  try {
+    return await apiRequest<TenantLeaseHistoryItem[]>(
+      `/tenants/${encodeURIComponent(tenantId)}/history`,
+      { cache: "no-store" },
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function getAllTenantHistoriesGroupedByTenant(): Promise<
+  Record<string, TenantLeaseHistoryItem[]>
+> {
+  const contracts = await getApiContracts();
+  const grouped: Record<string, TenantLeaseHistoryItem[]> = {};
+  for (const contract of contracts) {
+    if (!grouped[contract.tenantId]) {
+      grouped[contract.tenantId] = [];
+    }
+    grouped[contract.tenantId].push({
+      contractId: contract.id,
+      roomId: contract.roomId,
+      contractNumber: contract.id.slice(0, 8).toUpperCase(),
+      status: contract.status,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+    });
+  }
+  return grouped;
+}
+
+export async function updateTenantStatus(
+  tenantId: string,
+  status: "Active" | "Inactive" | "Blacklisted",
+): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
+  try {
+    await apiRequest(`/tenants/${encodeURIComponent(tenantId)}/status`, {
+      method: "PATCH",
+      body: { status },
+    });
+    const tenant = await getTenantById(tenantId);
+    if (!tenant) {
+      return {
+        success: false,
+        error: "The tenant status was updated but could not be reloaded.",
+      };
+    }
+    return { success: true, tenant };
   } catch (error) {
     if (error instanceof ApiError) {
       return { success: false, error: error.message };
@@ -1282,3 +1400,4 @@ export async function assignTenantToRoom(input: {
     throw error;
   }
 }
+

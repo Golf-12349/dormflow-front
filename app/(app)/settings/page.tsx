@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 
+import {
+  ChangePasswordCard,
+  OrganizationSettingsCard,
+  type OrganizationSettingItem,
+} from "@/components/settings/account-security-and-org-settings";
 import { ConsolePreferences } from "@/components/settings/console-preferences";
 import {
   StaffManagement,
@@ -27,14 +32,49 @@ async function getStaffUsers(): Promise<StaffUserItem[]> {
   }
 }
 
+async function getOrganizationSettings(): Promise<OrganizationSettingItem[]> {
+  try {
+    const page = await apiRequest<{ items?: OrganizationSettingItem[] }>(
+      "/settings",
+      {
+        query: { page: 1, pageSize: 100 },
+        cache: "no-store",
+      },
+    );
+    return page?.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function getCurrentUserMe(): Promise<{
+  fullName?: string;
+  email?: string;
+  phone?: string | null;
+  roles?: string[];
+} | null> {
+  try {
+    return await apiRequest<{
+      fullName?: string;
+      email?: string;
+      phone?: string | null;
+      roles?: string[];
+    }>("/auth/me", { cache: "no-store" });
+  } catch {
+    return null;
+  }
+}
+
 export default async function SettingsPage() {
   const session = await verifySession();
   const canManageStaff =
     session.user.role === "admin" || session.user.role === "manager";
-  const [rates, staffUsers, organizations] = await Promise.all([
+  const [rates, me, staffUsers, organizations, orgSettings] = await Promise.all([
     getUtilityRates(),
+    getCurrentUserMe(),
     canManageStaff ? getStaffUsers() : Promise.resolve([]),
     canManageStaff ? getOrganizations() : Promise.resolve([]),
+    canManageStaff ? getOrganizationSettings() : Promise.resolve([]),
   ]);
 
   return (
@@ -53,10 +93,15 @@ export default async function SettingsPage() {
           </h2>
           <dl className="mt-4 space-y-3 text-sm">
             {[
-              [t.settings.name, session.user.name],
-              [t.settings.email, session.user.email],
-              [t.settings.phone, session.user.phone || "—"],
-              [t.settings.role, t.roles[session.user.role]],
+              [t.settings.name, me?.fullName || session.user.name],
+              [t.settings.email, me?.email || session.user.email],
+              [t.settings.phone, me?.phone || session.user.phone || "—"],
+              [
+                t.settings.role,
+                me?.roles?.length
+                  ? `${t.roles[session.user.role]} (${me.roles.join(", ")})`
+                  : t.roles[session.user.role],
+              ],
               [
                 t.settings.expires,
                 new Date(session.expiresAt).toLocaleString("lo-LA"),
@@ -97,12 +142,20 @@ export default async function SettingsPage() {
         </section>
       </div>
 
+      <ChangePasswordCard />
+
       {canManageStaff ? (
-        <StaffManagement
-          users={staffUsers}
-          currentUserId={session.user.id}
-          organizations={organizations}
-        />
+        <>
+          <StaffManagement
+            users={staffUsers}
+            currentUserId={session.user.id}
+            organizations={organizations}
+          />
+          <OrganizationSettingsCard
+            settings={orgSettings}
+            organizations={organizations}
+          />
+        </>
       ) : null}
 
       <ConsolePreferences userId={session.user.id} />

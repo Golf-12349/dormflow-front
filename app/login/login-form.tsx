@@ -11,7 +11,12 @@ import {
   Mail,
 } from "lucide-react";
 
-import { loginAction } from "@/lib/actions/auth";
+import {
+  forgotPasswordAction,
+  loginAction,
+  resetPasswordAction,
+  type AuthMutationState,
+} from "@/lib/actions/auth";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -24,6 +29,11 @@ const INITIAL_LOGIN_STATE: LoginFormState = {
   email: "",
 };
 
+const INITIAL_MUTATION_STATE: AuthMutationState = {
+  status: "idle",
+  message: null,
+};
+
 const FIELD_BASE =
   "w-full rounded-xl border bg-white py-2.5 pr-3 pl-9 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400";
 
@@ -32,13 +42,23 @@ export function LoginForm({ notice }: { notice?: string }) {
     loginAction,
     INITIAL_LOGIN_STATE,
   );
+  const [forgotState, forgotFormAction, forgotPending] = useActionState(
+    forgotPasswordAction,
+    INITIAL_MUTATION_STATE,
+  );
+  const [resetState, resetFormAction, resetPending] = useActionState(
+    resetPasswordAction,
+    INITIAL_MUTATION_STATE,
+  );
   const [showPassword, setShowPassword] = useState(false);
+  const [mode, setMode] = useState<"login" | "forgot" | "reset">("login");
 
   const emailError = state.fieldErrors.email;
   const passwordError = state.fieldErrors.password;
 
   return (
-    <form action={formAction} className="space-y-5" noValidate>
+    <div className="space-y-5">
+      <form action={formAction} className="space-y-5" noValidate>
       {notice ? (
         <div
           role="status"
@@ -148,12 +168,14 @@ export function LoginForm({ notice }: { notice?: string }) {
           />
           {t.auth.keepSignedIn}
         </label>
-        <span
-          className="text-sm text-slate-400"
+        <button
+          type="button"
+          onClick={() => setMode(mode === "login" ? "forgot" : "login")}
+          className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
           title={t.auth.forgotPasswordHint}
         >
           {t.auth.forgotPassword}
-        </span>
+        </button>
       </div>
 
       <button
@@ -173,6 +195,113 @@ export function LoginForm({ notice }: { notice?: string }) {
           </>
         )}
       </button>
-    </form>
+      </form>
+
+      {mode !== "login" ? (
+        <div className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold tracking-wide text-slate-700 uppercase">
+              {mode === "forgot"
+                ? t.auth.recovery.requestTokenTitle
+                : t.auth.recovery.resetTitle}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setMode(mode === "forgot" ? "reset" : "forgot")}
+              className="text-xs font-medium text-indigo-600 hover:underline"
+            >
+              {mode === "forgot"
+                ? t.auth.recovery.haveTokenSwitch
+                : t.auth.recovery.requestTokenTitle}
+            </button>
+          </div>
+
+          {mode === "forgot" ? (
+            <div className="space-y-2.5">
+              <input
+                type="email"
+                name="email"
+                form="forgot-password-form"
+                placeholder="admin@dormhub.com"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+              <button
+                type="submit"
+                form="forgot-password-form"
+                disabled={forgotPending}
+                className="w-full rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {t.auth.recovery.requestTokenSubmit}
+              </button>
+              {forgotState.message ? (
+                <p
+                  className={cn(
+                    "text-xs font-medium",
+                    forgotState.status === "error"
+                      ? "text-rose-600"
+                      : "text-emerald-700",
+                  )}
+                >
+                  {forgotState.message}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <input
+                type="email"
+                name="email"
+                form="reset-password-form"
+                placeholder={t.auth.emailLabel}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+              <input
+                type="text"
+                name="token"
+                form="reset-password-form"
+                placeholder={t.auth.recovery.tokenLabel}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+              <input
+                type="password"
+                name="newPassword"
+                form="reset-password-form"
+                placeholder={t.auth.recovery.newPasswordLabel}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+              <input
+                type="password"
+                name="confirmPassword"
+                form="reset-password-form"
+                placeholder={t.auth.recovery.confirmPasswordLabel}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+              <button
+                type="submit"
+                form="reset-password-form"
+                disabled={resetPending}
+                className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {t.auth.recovery.resetSubmit}
+              </button>
+              {resetState.message ? (
+                <p
+                  className={cn(
+                    "text-xs font-medium",
+                    resetState.status === "error"
+                      ? "text-rose-600"
+                      : "text-emerald-700",
+                  )}
+                >
+                  {resetState.message}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+      <form id="forgot-password-form" action={forgotFormAction} noValidate />
+      <form id="reset-password-form" action={resetFormAction} noValidate />
+    </div>
   );
 }

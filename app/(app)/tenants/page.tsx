@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
 import {
+  getAllTenantHistoriesGroupedByTenant,
+  getAvailableRooms,
   getInvoices,
   getOrganizations,
   getRooms,
@@ -21,15 +23,21 @@ export const metadata: Metadata = {
  * fetched here, not in the client).
  */
 export default async function TenantsPage() {
-  const [tenants, rooms, organizations] = await Promise.all([
-    getTenants(),
-    getRooms(),
-    getOrganizations(),
-  ]);
+  const [tenants, rooms, availableRooms, organizations, historiesByTenant] =
+    await Promise.all([
+      getTenants(),
+      getRooms(),
+      getAvailableRooms(),
+      getOrganizations(),
+      getAllTenantHistoriesGroupedByTenant(),
+    ]);
 
   // 6.5 add-tenant form options: only vacant rooms can take a new tenant
   // (the Server Action re-checks this against the data layer before writing).
-  const vacantRooms = rooms.filter((room) => room.status === "vacant");
+  const vacantRooms =
+    availableRooms.length > 0
+      ? availableRooms
+      : rooms.filter((room) => room.status === "vacant");
 
   const invoices = await getInvoices();
 
@@ -49,7 +57,12 @@ export default async function TenantsPage() {
         organizations={organizations}
       />
 
-      <TenantTable tenants={tenants} rooms={rooms} invoices={invoices} />
+      <TenantTable
+        tenants={tenants}
+        rooms={rooms}
+        invoices={invoices}
+        historiesByTenant={historiesByTenant}
+      />
     </div>
   );
 }

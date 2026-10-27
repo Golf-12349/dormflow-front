@@ -15,7 +15,9 @@ import {
   assignTenantRoomAction,
   checkOutTenantAction,
   updateTenantContactAction,
+  updateTenantStatusAction,
 } from "@/lib/actions/tenants";
+import type { TenantLeaseHistoryItem } from "@/lib/api/dormflow";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import {
@@ -41,10 +43,14 @@ interface TenantDetailDrawerProps {
   tenant: Tenant;
   /** The tenant's assigned room, or `null` when none is assigned yet. */
   room: Room | null;
+  /** All rooms so lease history can resolve `roomId` -> room number. */
+  rooms?: Room[];
   /** Vacant rooms available for check-in when the tenant has no active room. */
   vacantRooms?: Room[];
   /** This tenant's invoices, newest first (pre-sorted by the table). */
   invoices: Invoice[];
+  /** Lease history from GET /tenants/{id}/history. */
+  history?: TenantLeaseHistoryItem[];
   /** Closes the drawer; the parent returns focus to the row that opened it. */
   onClose: () => void;
   /**
@@ -105,8 +111,10 @@ const DD_CLASSES = "font-medium text-slate-900";
 export function TenantDetailDrawer({
   tenant,
   room,
+  rooms = [],
   vacantRooms = [],
   invoices,
+  history = [],
   onClose,
   nowMs,
 }: TenantDetailDrawerProps) {
@@ -129,6 +137,12 @@ export function TenantDetailDrawer({
   const [isAssigningRoom, setIsAssigningRoom] = useState(false);
   const [assignState, assignFormAction, assignPending] = useActionState(
     assignTenantRoomAction,
+    INITIAL_CHECK_OUT_STATE,
+  );
+
+  /** PATCH /tenants/{id}/status */
+  const [statusState, statusFormAction, statusPending] = useActionState(
+    updateTenantStatusAction,
     INITIAL_CHECK_OUT_STATE,
   );
 
@@ -676,6 +690,135 @@ export function TenantDetailDrawer({
                 </table>
               </div>
             )}
+          </section>
+
+          {/* Lease History — GET /tenants/{id}/history */}
+          <section>
+            <h3 className={SECTION_TITLE}>
+              {t.tenants.profile.sections.history}
+            </h3>
+            {history.length === 0 ? (
+              <p className={EMPTY_CLASSES}>{t.tenants.profile.noHistory}</p>
+            ) : (
+              <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-700">
+                    <tr>
+                      <th scope="col" className="px-3 py-2">
+                        {t.management.table.fields.contractNumber}
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        {t.tenants.fields.room}
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        {t.tenants.fields.moveIn} → {t.tenants.fields.leaseEnd}
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-right">
+                        {t.tenants.fields.status}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {history.map((item) => {
+                      const matchedRoom = rooms.find(
+                        (candidate) => candidate.id === item.roomId,
+                      );
+                      return (
+                        <tr key={item.contractId}>
+                          <td className="px-3 py-2 font-medium text-slate-900">
+                            {item.contractNumber}
+                          </td>
+                          <td className="px-3 py-2">
+                            {matchedRoom ? matchedRoom.number : item.roomId.slice(0, 8)}
+                          </td>
+                          <td className="px-3 py-2">
+                            {formatDate(item.startDate)} – {formatDate(item.endDate)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-slate-700">
+                            {item.status}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* Tenant Status — PATCH /tenants/{id}/status */}
+          <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+            <h3 className={SECTION_TITLE}>
+              {t.tenants.profile.statusAction.sectionTitle}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {t.tenants.profile.statusAction.hint}
+            </p>
+            <form
+              action={statusFormAction}
+              className="mt-3 flex flex-wrap items-center gap-2"
+              noValidate
+            >
+              <input type="hidden" name="tenantId" value={tenant.id} />
+              <select
+                name="status"
+                defaultValue={tenant.status === "inactive" ? "Inactive" : "Active"}
+                aria-label={t.tenants.profile.statusAction.sectionTitle}
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 shadow-sm outline-none focus:border-indigo-400"
+              >
+                <option value="Active">
+                  {t.tenants.profile.statusAction.active}
+                </option>
+                <option value="Inactive">
+                  {t.tenants.profile.statusAction.inactive}
+                </option>
+                <option value="Blacklisted">
+                  {t.tenants.profile.statusAction.blacklisted}
+                </option>
+              </select>
+              <button
+                type="submit"
+                disabled={statusPending}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+              >
+                {statusPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    <span>{t.tenants.profile.statusAction.saving}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="size-3.5" aria-hidden="true" />
+                    <span>{t.tenants.profile.statusAction.submit}</span>
+                  </>
+                )}
+              </button>
+            </form>
+            {statusState.status !== "idle" && statusState.message ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  "mt-3 flex items-start gap-2 rounded-xl border p-3 text-xs",
+                  statusState.status === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-rose-200 bg-rose-50 text-rose-700",
+                )}
+              >
+                {statusState.status === "success" ? (
+                  <CheckCircle2
+                    className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <AlertCircle
+                    className="mt-0.5 size-4 shrink-0 text-rose-500"
+                    aria-hidden="true"
+                  />
+                )}
+                <p>{statusState.message}</p>
+              </div>
+            ) : null}
           </section>
 
           {/* 6.5 — check-out: destructive, confirmation required (two records

@@ -43,6 +43,90 @@ function queryFor(module: ManagementModule): Record<string, string | number> {
   };
 }
 
+async function enrichSubResourceItems(
+  resourceSlug: string,
+  items: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (items.length === 0) return items;
+
+  if (resourceSlug === "contracts") {
+    const settled = await Promise.allSettled(
+      items.map(async (item) => {
+        const id = str(item.id);
+        if (!id) return item;
+        const renewals = await apiRequest<
+          Array<{
+            id: string;
+            previousEndDate: string;
+            newEndDate: string;
+            previousRent: number;
+            newRent: number;
+          }>
+        >(`/contracts/${encodeURIComponent(id)}/renewals`, {
+          cache: "no-store",
+        });
+        const summary = Array.isArray(renewals) && renewals.length > 0
+          ? renewals
+              .map((r) => `${r.previousEndDate} → ${r.newEndDate}`)
+              .join(", ")
+          : "—";
+        return { ...item, renewals: summary };
+      }),
+    );
+    return settled.map((result, idx) =>
+      result.status === "fulfilled" ? result.value : items[idx],
+    );
+  }
+
+  if (resourceSlug === "invoices") {
+    const settled = await Promise.allSettled(
+      items.map(async (item) => {
+        const id = str(item.id);
+        if (!id) return item;
+        const charges = await apiRequest<
+          Array<{ id: string; description: string; amount: number }>
+        >(`/invoices/${encodeURIComponent(id)}/charges`, {
+          cache: "no-store",
+        });
+        const summary = Array.isArray(charges) && charges.length > 0
+          ? charges.map((c) => `${c.description} (${c.amount})`).join(", ")
+          : "—";
+        return { ...item, charges: summary };
+      }),
+    );
+    return settled.map((result, idx) =>
+      result.status === "fulfilled" ? result.value : items[idx],
+    );
+  }
+
+  if (resourceSlug === "maintenance-requests") {
+    const settled = await Promise.allSettled(
+      items.map(async (item) => {
+        const id = str(item.id);
+        if (!id) return item;
+        const timeline = await apiRequest<
+          Array<{ id: string; status: string; note: string; createdAt: string }>
+        >(`/maintenance-requests/${encodeURIComponent(id)}/timeline`, {
+          cache: "no-store",
+        });
+        const summary = Array.isArray(timeline) && timeline.length > 0
+          ? timeline
+              .map((entry) =>
+                entry.note ? `${entry.status}: ${entry.note}` : entry.status,
+              )
+              .join(" | ")
+          : "—";
+        return { ...item, timelineHistory: summary };
+      }),
+    );
+    return settled.map((result, idx) =>
+      result.status === "fulfilled" ? result.value : items[idx],
+    );
+  }
+
+  return items;
+}
+
 export async function getManagementRecords(
   module: ManagementModule,
   queryOverrides: Record<string, string> = {},
@@ -54,24 +138,82 @@ export async function getManagementRecords(
   });
 
   if (Array.isArray(first) || !isRecord(first) || !Array.isArray(first.items)) {
-    const items = toRecords(first);
+    const rawItems = toRecords(first);
+    const items = await enrichSubResourceItems(module.slug, rawItems);
     return { items, totalCount: items.length };
   }
 
   const firstPage = first as PagedResponse;
-  const items = toRecords(firstPage.items);
+  const rawItems = toRecords(firstPage.items);
   const totalPages = Math.max(1, firstPage.totalPages ?? 1);
-  const totalCount = firstPage.totalCount ?? items.length;
+  const totalCount = firstPage.totalCount ?? rawItems.length;
 
   for (let page = 2; page <= totalPages; page += 1) {
     const result = await apiRequest<PagedResponse>(module.endpoint, {
       query: { page, pageSize: 100, ...query },
       cache: "no-store",
     });
-    items.push(...toRecords(result.items));
+    rawItems.push(...toRecords(result.items));
   }
 
+  const items = await enrichSubResourceItems(module.slug, rawItems);
   return { items, totalCount };
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  try {
+    const response = await apiRequest<{ unreadCount?: number }>(
+      "/notifications/unread-count",
+      { cache: "no-store" },
+    );
+    return typeof response?.unreadCount === "number" ? response.unreadCount : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export interface AnalyticsOverview {
+  revenue: number;
+  expenses: number;
+  netOperatingCash: number;
+  outstanding: number;
+  expiringContracts: number;
+}
+
+export async function getAnalyticsOverview(
+  from: string,
+  to: string,
+): Promise<AnalyticsOverview | null> {
+  try {
+    return await apiRequest<AnalyticsOverview>("/analytics", {
+      query: { from, to },
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function getDetailReportRecords(
+  report: string,
+  from: string,
+  to: string,
+): Promise<ManagementRecords> {
+  const allowed = ["revenue", "expenses", "occupancy", "payments", "aging"];
+  const safeReport = allowed.includes(report) ? report : "revenue";
+  try {
+    const payload = await apiRequest<unknown>(
+      `/reports/detail/${encodeURIComponent(safeReport)}`,
+      {
+        query: { from, to },
+        cache: "no-store",
+      },
+    );
+    const items = toRecords(payload);
+    return { items, totalCount: items.length };
+  } catch {
+    return { items: [], totalCount: 0 };
+  }
 }
 
 export async function getOutstandingInvoiceRecords(): Promise<ManagementRecords> {

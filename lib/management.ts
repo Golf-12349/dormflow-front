@@ -58,8 +58,9 @@ export const MANAGEMENT_GROUPS: ManagementGroup[] = [
     description: t.management.groups.finance.description,
     icon: Banknote,
     modules: [
+      { slug: "billing-periods", ...t.management.modules["billing-periods"], endpoint: "/billing-periods" },
       { slug: "meter-readings", ...t.management.modules["meter-readings"], endpoint: "/meter-readings", href: "/billing" },
-      { slug: "invoices", ...t.management.modules.invoices, endpoint: "/invoices", href: "/billing" },
+      { slug: "invoices", ...t.management.modules.invoices, endpoint: "/invoices" },
       { slug: "payments", ...t.management.modules.payments, endpoint: "/payments" },
       { slug: "deposits", ...t.management.modules.deposits, endpoint: "/deposits" },
       { slug: "expenses", ...t.management.modules.expenses, endpoint: "/expenses" },

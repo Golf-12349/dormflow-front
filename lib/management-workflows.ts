@@ -26,6 +26,7 @@ export const MANAGEMENT_CREATE_FIELDS: Record<string, ManagementField[]> = {
   "room-types": [id("dormitoryId"), text("code", true), text("name", true), text("description"), number("monthlyRent"), number("dailyRent", false), number("depositAmount"), number("maximumOccupants")],
   contracts: [id("roomId"), id("tenantId"), { name: "coTenantIds", type: "textarea", array: true }, text("reservationId"), date("startDate"), date("endDate"), number("monthlyRent", false), number("depositAmount", false), number("waterRatePerUnit", false), number("electricityRatePerUnit", false), text("notes")],
   reservations: [id("roomId"), id("tenantId"), date("moveInDate"), number("holdDays"), number("reservationFee"), text("notes")],
+  "billing-periods": [id("dormitoryId"), date("month")],
   payments: [id("invoiceId"), number("amount"), { name: "paymentDate", type: "datetime-local" }, choice("method", ["Cash", "BankTransfer", "QrCode", "Other"]), text("referenceNumber"), text("notes")],
   deposits: [id("contractId"), number("amount", false), text("notes")],
   expenses: [id("dormitoryId"), text("maintenanceRequestId"), choice("category", ["Utilities", "Maintenance", "Salaries", "Supplies", "Marketing", "Other"]), number("amount"), date("expenseDate"), text("description", true), text("paidTo"), text("notes")],
@@ -57,9 +58,10 @@ export const MANAGEMENT_OPERATIONS: Record<string, string[]> = {
   floors: ["status", "delete"],
   "room-types": ["status", "delete"],
   contracts: ["activate", "terminate", "renew"],
-  invoices: ["issue", "cancel"],
+  "billing-periods": ["generate", "close"],
+  invoices: ["issue", "charge", "cancel"],
   reservations: ["confirm", "cancel"],
-  payments: ["confirm", "refund"],
+  payments: ["confirm", "allocate", "refund"],
   deposits: ["refund"],
   "maintenance-requests": ["assign", "status", "timeline", "cost"],
   parcels: ["pickup", "return"],
@@ -67,7 +69,7 @@ export const MANAGEMENT_OPERATIONS: Record<string, string[]> = {
   parking: ["release"],
   announcements: ["publish", "archive", "cancel"],
   notifications: ["read"],
-  users: ["status", "roles", "dormitories"],
+  users: ["status", "roles", "dormitories", "removeDormitory"],
   roles: ["permissions", "delete"],
 };
 
@@ -75,6 +77,8 @@ export const MANAGEMENT_OPERATION_FIELDS: Record<string, ManagementField[]> = {
   status: [choice("status", ["Active", "Inactive"])],
   terminate: [text("reason")],
   renew: [date("endDate"), number("monthlyRent", false), number("waterRatePerUnit", false), number("electricityRatePerUnit", false)],
+  charge: [text("description", true), number("amount", true)],
+  allocate: [id("invoiceId"), number("amount", true), choice("method", ["Cash", "BankTransfer", "QrCode", "Other"]), text("referenceNumber")],
   timeline: [text("note", true)],
   cost: [number("amount", true), text("description", true)],
   refund: [number("refundAmount", false), text("reason"), text("deductionReason")],
@@ -82,6 +86,7 @@ export const MANAGEMENT_OPERATION_FIELDS: Record<string, ManagementField[]> = {
   pickup: [text("pickedUpByName")],
   roles: [{ name: "roles", type: "textarea", required: true }],
   dormitories: [id("dormitoryId")],
+  removeDormitory: [id("dormitoryId")],
   permissions: [{ name: "permissions", type: "textarea", required: true }],
 };
 

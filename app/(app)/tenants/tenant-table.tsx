@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils";
 import { TenantDetailDrawer } from "./tenant-detail-drawer";
 import { TenantRowMenu } from "./tenant-row-menu";
+import type { TenantLeaseHistoryItem } from "@/lib/api/dormflow";
 import type { Invoice, Room, Tenant, TenantStatus } from "@/types";
 
 type SortKey = "name" | "balance" | "leaseEnd";
@@ -146,11 +147,13 @@ export function TenantTable({
   tenants,
   rooms,
   invoices,
+  historiesByTenant = {},
 }: {
   tenants: Tenant[];
   rooms: Room[];
   /** Every invoice in the system; the drawer filters them by `tenantId`. */
   invoices: Invoice[];
+  historiesByTenant?: Record<string, TenantLeaseHistoryItem[]>;
 }) {
   /** room id -> human-readable room number, for the room column + search. */
   const roomNumbers = useMemo(
@@ -440,8 +443,10 @@ export function TenantTable({
           key={selectedTenant.id}
           tenant={selectedTenant}
           room={selectedRoom}
+          rooms={rooms}
           vacantRooms={rooms.filter((r) => r.status === "vacant")}
           invoices={selectedInvoices}
+          history={historiesByTenant[selectedTenant.id] ?? []}
           nowMs={selected.nowMs}
           onClose={closeTenant}
         />

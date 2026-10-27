@@ -5,9 +5,12 @@ import { notFound } from "next/navigation";
 
 import { ManagementRecordsTable } from "@/components/management/management-records-table";
 import {
+  getAnalyticsOverview,
+  getDetailReportRecords,
   getManagementLookupOptions,
   getManagementRecords,
   getOutstandingInvoiceRecords,
+  getUnreadNotificationCount,
 } from "@/lib/api/management";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
@@ -47,10 +50,16 @@ export default async function ManagementModulePage({
 
   let records;
   let outstandingRecords;
+  let detailReportRecords;
+  let analyticsOverview;
+  let unreadNotificationCount: number | undefined;
   let lookupOptions;
   const filters = await searchParams;
   const fromValue = filters?.periodFrom;
   const toValue = filters?.periodTo;
+  const detailReportParam = typeof filters?.detailReport === "string"
+    ? filters.detailReport
+    : "expenses";
   const validDate = (value: string | string[] | undefined): value is string =>
     typeof value === "string" &&
     /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
@@ -67,13 +76,31 @@ export default async function ManagementModulePage({
   const reportPeriod = {
     periodFrom: validDate(fromValue) ? fromValue : defaultFrom,
     periodTo: validDate(toValue) ? toValue : defaultTo,
+    detailReport: ["revenue", "expenses", "occupancy", "payments", "aging"].includes(detailReportParam)
+      ? detailReportParam
+      : "expenses",
   };
   let apiError: ApiError | undefined;
   try {
     if (result.module.slug === "reports") {
-      [records, outstandingRecords] = await Promise.all([
-        getManagementRecords(result.module, reportPeriod),
+      [records, outstandingRecords, analyticsOverview, detailReportRecords] = await Promise.all([
+        getManagementRecords(result.module, {
+          periodFrom: reportPeriod.periodFrom,
+          periodTo: reportPeriod.periodTo,
+        }),
         getOutstandingInvoiceRecords(),
+        getAnalyticsOverview(reportPeriod.periodFrom, reportPeriod.periodTo),
+        getDetailReportRecords(
+          reportPeriod.detailReport,
+          reportPeriod.periodFrom,
+          reportPeriod.periodTo,
+        ),
+      ]);
+    } else if (result.module.slug === "notifications") {
+      [records, lookupOptions, unreadNotificationCount] = await Promise.all([
+        getManagementRecords(result.module),
+        getManagementLookupOptions(result.module.slug),
+        getUnreadNotificationCount(),
       ]);
     } else {
       [records, lookupOptions] = await Promise.all([
@@ -125,6 +152,9 @@ export default async function ManagementModulePage({
       module={result.module}
       records={records}
       relatedRecords={outstandingRecords}
+      detailReportRecords={detailReportRecords}
+      analyticsOverview={analyticsOverview}
+      unreadNotificationCount={unreadNotificationCount}
       reportPeriod={reportPeriod}
       lookupOptions={lookupOptions}
     />
