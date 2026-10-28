@@ -40,16 +40,22 @@ export function formatUnitPrice(value: number): string {
   }).format(value);
 }
 
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("lo-LA", {
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== "string" || iso.trim() === "") return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("lo-LA", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 }
 
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("lo-LA", {
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== "string" || iso.trim() === "") return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("lo-LA", {
     year: "numeric",
     month: "short",
     day: "numeric",

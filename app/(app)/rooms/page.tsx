@@ -13,6 +13,7 @@ import {
 import type { Tenant, UtilityReading } from "@/types";
 import { AddRoomForm } from "./add-room-form";
 import { RoomInventoryView } from "./room-inventory-view";
+import { SeedSomsakButton } from "@/components/seed/seed-somsak-button";
 
 export const metadata: Metadata = {
   title: t.nav.rooms,
@@ -79,9 +80,14 @@ export default async function RoomsPage() {
           <p className="text-sm text-slate-500">{t.rooms.subtitle(rooms.length)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <SeedSomsakButton variant="compact" />
           <AddRoomForm options={roomCreationOptions} />
         </div>
       </div>
+
+      {rooms.length === 0 ? (
+        <SeedSomsakButton variant="banner" />
+      ) : null}
 
       <RoomInventoryView
         rooms={roomItems}
@@ -95,4 +101,3 @@ export default async function RoomsPage() {
     </div>
   );
 }
-

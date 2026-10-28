@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/dormflow";
 import { AddTenantForm } from "./add-tenant-form";
 import { TenantTable } from "./tenant-table";
+import { SeedSomsakButton } from "@/components/seed/seed-somsak-button";
 
 export const metadata: Metadata = {
   title: t.nav.tenants,
@@ -43,14 +44,21 @@ export default async function TenantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl leading-snug font-semibold tracking-tight text-slate-900">
-          {t.nav.tenants}
-        </h2>
-        <p className="text-sm text-slate-500">
-          {t.tenants.subtitle(tenants.length)}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl leading-snug font-semibold tracking-tight text-slate-900">
+            {t.nav.tenants}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {t.tenants.subtitle(tenants.length)}
+          </p>
+        </div>
+        <SeedSomsakButton variant="compact" />
       </div>
+
+      {tenants.length === 0 ? (
+        <SeedSomsakButton variant="banner" />
+      ) : null}
 
       <AddTenantForm
         vacantRooms={vacantRooms}
