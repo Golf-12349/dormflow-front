@@ -1,20 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LayoutGrid, LayoutList, Search } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Home,
+  LayoutGrid,
+  LayoutList,
+  Receipt,
+  Search,
+  User,
+  UserCheck,
+  UserPlus,
+  Wrench,
+} from "lucide-react";
 
 import { t } from "@/lib/i18n";
 import {
-  ROOM_STATUS_LABELS,
   cn,
   formatCurrency,
-  roomTypeLabel,
 } from "@/lib/utils";
 import { RoomDetailDrawer, type UtilityRates } from "./room-detail-drawer";
 import { StatusBadge } from "./status-badge";
+import { QuickCheckInModal } from "@/components/rooms/quick-check-in-modal";
 import type { RoomCreationOptions } from "@/lib/api/dormflow";
-import type { Invoice, MaintenanceItem, Room, RoomStatus, Tenant, UtilityReading } from "@/types";
+import type {
+  Invoice,
+  MaintenanceItem,
+  Room,
+  RoomStatus,
+  Tenant,
+  UtilityReading,
+} from "@/types";
 
 export interface RoomItem extends Room {
   tenantName: string;
@@ -33,88 +51,37 @@ interface RoomInventoryViewProps {
   options?: RoomCreationOptions;
 }
 
-/** Legend order, also used by the status filter control. */
 const ROOM_STATUSES: RoomStatus[] = [
-  "occupied",
   "vacant",
+  "occupied",
   "maintenance",
   "reserved",
 ];
 
-/** `"all"` keeps every floor; otherwise the filter holds one floor number. */
 type FloorFilter = number | "all";
-
-/** `"all"` keeps every status; otherwise the filter holds one `RoomStatus`. */
 type StatusFilter = RoomStatus | "all";
 
-/** Filter params kept in the URL (5.5); defaults are never written to it. */
 const FLOOR_PARAM = "floor";
 const STATUS_PARAM = "status";
 const QUERY_PARAM = "q";
-
-/** How long typing must pause before the search box syncs to the URL. */
 const SEARCH_DEBOUNCE_MS = 350;
 
-/** The three URL-backed filter values. */
 interface FilterValues {
   floor: FloorFilter;
   status: StatusFilter;
   q: string;
 }
 
-/** `?floor=3` -> `3`, but only when that floor really exists in the data. */
 function parseFloorFilter(raw: string | null, floors: number[]): FloorFilter {
   return floors.find((floor) => String(floor) === raw) ?? "all";
 }
 
-/** `?status=vacant` -> `"vacant"`; anything unknown means "all statuses". */
 function parseStatusFilter(raw: string | null): StatusFilter {
   return ROOM_STATUSES.find((status) => status === raw) ?? "all";
 }
 
-const SEGMENT_GROUP_CLASSES =
-  "inline-flex flex-wrap items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1";
-
-const SEGMENT_BASE_CLASSES =
-  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition";
-
-const SEGMENT_ACTIVE_CLASSES = "bg-white text-slate-900 shadow-sm";
-const SEGMENT_INACTIVE_CLASSES = "text-slate-600 hover:text-slate-900";
-
-/**
- * Pill button shared by the view toggle, the floor tabs and the status control,
- * so every segmented control on this page looks and announces itself the same.
- */
-function SegmentButton({
-  active,
-  onClick,
-  label,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  /** Accessible name, only needed when the visible text is ambiguous. */
-  label?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={label}
-      className={cn(
-        SEGMENT_BASE_CLASSES,
-        active ? SEGMENT_ACTIVE_CLASSES : SEGMENT_INACTIVE_CLASSES,
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function RoomInventoryView({
-  rooms,
+  rooms: initialRooms,
   tenantsByRoomId,
   readingsByRoomId,
   invoicesByRoomId,
@@ -126,34 +93,40 @@ export function RoomInventoryView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  /** 5.2 stays local on purpose — 5.5 only URL-persists the filters. */
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // Local optimistic state for real-time reactivity
+  const [localRooms, setLocalRooms] = useState<RoomItem[]>(initialRooms);
+  useEffect(() => {
+    setLocalRooms(initialRooms);
+  }, [initialRooms]);
 
-  /** 5.6 — the drawer selection is local; URL state for it is out of scope. */
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  /** The card/row that opened the drawer, so focus can go back to it. */
+  const [quickCheckInRoom, setQuickCheckInRoom] = useState<RoomItem | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const roomTrigger = useRef<HTMLElement | null>(null);
 
-  /** Floors come from the data, so a new floor needs no UI change. */
-  const floors = [
-    ...new Set(rooms.map((room) => (room.floor > 0 && room.floor <= 200 ? room.floor : 1))),
-  ].sort((a, b) => a - b);
+  const floors = useMemo(() => {
+    return [
+      ...new Set(
+        localRooms.map((room) =>
+          room.floor > 0 && room.floor <= 200 ? room.floor : 1,
+        ),
+      ),
+    ].sort((a, b) => a - b);
+  }, [localRooms]);
 
-  /** 5.5 — floor and status are read from the URL on every render. */
   const floor = parseFloorFilter(searchParams.get(FLOOR_PARAM), floors);
   const status = parseStatusFilter(searchParams.get(STATUS_PARAM));
 
-  /** The input stays local so typing filters instantly; the URL catches up. */
   const [query, setQuery] = useState(() => searchParams.get(QUERY_PARAM) ?? "");
   const queryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /** Last committed params, so a debounced write cannot drop a newer filter. */
   const latestParams = useRef(searchParams.toString());
+
   useEffect(() => {
     latestParams.current = searchParams.toString();
   }, [searchParams]);
 
-  /** Cancels a pending debounce when the screen goes away. */
   useEffect(
     () => () => {
       if (queryTimer.current) clearTimeout(queryTimer.current);
@@ -161,11 +134,6 @@ export function RoomInventoryView({
     [],
   );
 
-  /**
-   * Writes the filters that changed into the URL, omitting any that sit at its
-   * default so a bare `/rooms` still means "no filters". Unrelated params stay
-   * untouched, and `replace` keeps filtering out of the history stack.
-   */
   function applyFilters(next: Partial<FilterValues>) {
     const params = new URLSearchParams(latestParams.current);
 
@@ -190,30 +158,53 @@ export function RoomInventoryView({
     });
   }
 
-  /** Instant local filtering (see `visibleRooms`), debounced URL sync. */
   function handleQueryChange(value: string) {
     setQuery(value);
-
     if (queryTimer.current) clearTimeout(queryTimer.current);
     queryTimer.current = setTimeout(() => {
       applyFilters({ q: value });
     }, SEARCH_DEBOUNCE_MS);
   }
 
-  /**
-   * 5.4 — the three filters (floor, status, room number) combine with AND and
-   * are applied client-side to the rooms this component already received.
-   */
   const needle = query.trim().toLowerCase();
-  const visibleRooms = rooms.filter((room) => {
-    if (floor !== "all" && room.floor !== floor) return false;
-    if (status !== "all" && room.status !== status) return false;
-    if (needle && !room.number.toLowerCase().includes(needle)) return false;
-    return true;
-  });
+  const visibleRooms = useMemo(() => {
+    return localRooms.filter((room) => {
+      if (floor !== "all" && room.floor !== floor) return false;
+      if (status !== "all" && room.status !== status) return false;
+      if (
+        needle &&
+        !room.number.toLowerCase().includes(needle) &&
+        !room.tenantName.toLowerCase().includes(needle)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [localRooms, floor, status, needle]);
+
+  // Group rooms by floor (Roomie Room-Centric layout)
+  const roomsByFloor = useMemo(() => {
+    const map = new Map<number, RoomItem[]>();
+    for (const room of visibleRooms) {
+      const flr = room.floor > 0 && room.floor <= 200 ? room.floor : 1;
+      if (!map.has(flr)) map.set(flr, []);
+      map.get(flr)!.push(room);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a - b);
+  }, [visibleRooms]);
+
+  // Overall Statistics
+  const totalCount = localRooms.length;
+  const vacantCount = localRooms.filter((r) => r.status === "vacant").length;
+  const occupiedCount = localRooms.filter((r) => r.status === "occupied").length;
+  const maintCount = localRooms.filter(
+    (r) => r.status === "maintenance" || r.status === "reserved",
+  ).length;
+  const occupancyRate =
+    totalCount > 0 ? Math.round((occupiedCount / totalCount) * 100) : 0;
 
   const selectedRoom = selectedRoomId
-    ? rooms.find((room) => room.id === selectedRoomId) ?? null
+    ? localRooms.find((room) => room.id === selectedRoomId) ?? null
     : null;
 
   function openRoom(roomId: string, trigger: HTMLElement) {
@@ -223,240 +214,448 @@ export function RoomInventoryView({
 
   function closeRoom() {
     setSelectedRoomId(null);
-    // Hand focus back to the card/row that opened the drawer.
     roomTrigger.current?.focus();
     roomTrigger.current = null;
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* 5.3 — status legend */}
-        <ul
-          aria-label={t.rooms.legendLabel}
-          className="flex flex-wrap items-center gap-2"
-        >
-          {ROOM_STATUSES.map((status) => (
-            <li key={status}>
-              <StatusBadge status={status} />
-            </li>
-          ))}
-        </ul>
+  const handleQuickCheckInSuccess = (updatedRoom: RoomItem, tenantName: string) => {
+    // Immediate optimistic update: color switches to Red immediately
+    setLocalRooms((prev) =>
+      prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r)),
+    );
+    setToastMessage(`ເອົາຜູ້ເຊົ່າ "${tenantName}" ເຂົ້າພັກຫ້ອງ ${updatedRoom.number} ສຳເລັດແລ້ວ!`);
+    setTimeout(() => setToastMessage(null), 5000);
+  };
 
-        {/* 5.2 — grid / list toggle (local state; URL state lands in 5.5) */}
+  return (
+    <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage ? (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm animate-in fade-in slide-in-from-top duration-300">
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+          <span>{toastMessage}</span>
+        </div>
+      ) : null}
+
+      {/* Roomie Top Overview Metric Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Total Rooms */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase">
+              ຫ້ອງພັກທັງໝົດ
+            </span>
+            <Home className="size-4 text-slate-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900">
+              {totalCount}
+            </span>
+            <span className="text-xs text-slate-500">ຫ້ອງ</span>
+          </div>
+        </div>
+
+        {/* Vacant Rooms (Green) */}
         <div
-          role="group"
-          aria-label={t.rooms.viewModeLabel}
-          className={SEGMENT_GROUP_CLASSES}
+          onClick={() => applyFilters({ status: "vacant" })}
+          className={cn(
+            "cursor-pointer rounded-2xl border-2 p-4 transition-all shadow-xs",
+            status === "vacant"
+              ? "border-emerald-500 bg-emerald-50/80 shadow-emerald-500/10 shadow-md"
+              : "border-emerald-200 bg-emerald-50/30 hover:border-emerald-300 hover:bg-emerald-50/60",
+          )}
         >
-          <SegmentButton
-            active={viewMode === "grid"}
-            onClick={() => setViewMode("grid")}
-            label={t.rooms.view.gridAria}
-          >
-            <LayoutGrid className="size-3.5" aria-hidden="true" />
-            <span>{t.rooms.view.grid}</span>
-          </SegmentButton>
-          <SegmentButton
-            active={viewMode === "list"}
-            onClick={() => setViewMode("list")}
-            label={t.rooms.view.listAria}
-          >
-            <LayoutList className="size-3.5" aria-hidden="true" />
-            <span>{t.rooms.view.list}</span>
-          </SegmentButton>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-800 uppercase flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              ຫ້ອງຫວ່າງ (Vacant)
+            </span>
+            <UserPlus className="size-4 text-emerald-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-emerald-900">
+              {vacantCount}
+            </span>
+            <span className="text-xs font-medium text-emerald-700">
+              ພ້ອມເຂົ້າພັກ
+            </span>
+          </div>
+        </div>
+
+        {/* Occupied Rooms (Red) */}
+        <div
+          onClick={() => applyFilters({ status: "occupied" })}
+          className={cn(
+            "cursor-pointer rounded-2xl border-2 p-4 transition-all shadow-xs",
+            status === "occupied"
+              ? "border-rose-500 bg-rose-50/80 shadow-rose-500/10 shadow-md"
+              : "border-rose-200 bg-rose-50/30 hover:border-rose-300 hover:bg-rose-50/60",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-rose-800 uppercase flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-rose-500" />
+              ມີຜູ້ເຊົ່າ (Occupied)
+            </span>
+            <UserCheck className="size-4 text-rose-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-rose-900">
+              {occupiedCount}
+            </span>
+            <span className="text-xs font-medium text-rose-700">
+              {occupancyRate}% ຂອງທັງໝົດ
+            </span>
+          </div>
+        </div>
+
+        {/* Maintenance / Reserved (Yellow) */}
+        <div
+          onClick={() => applyFilters({ status: "maintenance" })}
+          className={cn(
+            "cursor-pointer rounded-2xl border-2 p-4 transition-all shadow-xs",
+            status === "maintenance" || status === "reserved"
+              ? "border-amber-500 bg-amber-50/80 shadow-amber-500/10 shadow-md"
+              : "border-amber-200 bg-amber-50/30 hover:border-amber-300 hover:bg-amber-50/60",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-800 uppercase flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-amber-500" />
+              ສ້ອມແປງ / ຈອງ
+            </span>
+            <Wrench className="size-4 text-amber-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-amber-900">
+              {maintCount}
+            </span>
+            <span className="text-xs font-medium text-amber-700">ຫ້ອງ</span>
+          </div>
         </div>
       </div>
 
-      {/* 5.4 — floor tabs, status segments and room-number search (local state) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div
-            role="group"
-            aria-label={t.rooms.filters.floorLabel}
-            className={SEGMENT_GROUP_CLASSES}
+      {/* Filters Bar: Floor Tabs, Search, View Mode */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
+        {/* Floor Tabs */}
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => applyFilters({ floor: "all" })}
+            className={cn(
+              "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+              floor === "all"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+            )}
           >
-            <SegmentButton
-              active={floor === "all"}
-              onClick={() => applyFilters({ floor: "all" })}
+            ທຸກຊັ້ນ
+          </button>
+          {floors.map((floorNum) => (
+            <button
+              key={floorNum}
+              type="button"
+              onClick={() => applyFilters({ floor: floorNum })}
+              className={cn(
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                floor === floorNum
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+              )}
             >
-              {t.rooms.filters.allFloors}
-            </SegmentButton>
-            {floors.map((floorNumber) => (
-              <SegmentButton
-                key={floorNumber}
-                active={floor === floorNumber}
-                onClick={() => applyFilters({ floor: floorNumber })}
-              >
-                {t.rooms.floorLabel(floorNumber)}
-              </SegmentButton>
-            ))}
-          </div>
+              ຊັ້ນ {floorNum}
+            </button>
+          ))}
+        </div>
 
-          <div
-            role="group"
-            aria-label={t.rooms.filters.statusLabel}
-            className={SEGMENT_GROUP_CLASSES}
-          >
-            <SegmentButton
-              active={status === "all"}
-              onClick={() => applyFilters({ status: "all" })}
-            >
-              {t.rooms.filters.allStatuses}
-            </SegmentButton>
-            {ROOM_STATUSES.map((roomStatus) => (
-              <SegmentButton
-                key={roomStatus}
-                active={status === roomStatus}
-                onClick={() => applyFilters({ status: roomStatus })}
-              >
-                {ROOM_STATUS_LABELS[roomStatus]}
-              </SegmentButton>
-            ))}
-          </div>
-
-          <div className="relative min-w-56 flex-1 sm:max-w-xs">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden="true"
-            />
+        {/* Search Input & View Toggle */}
+        <div className="flex flex-1 items-center justify-end gap-2.5 min-w-[240px]">
+          <div className="relative w-full max-w-xs">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
               value={query}
-              onChange={(event) => handleQueryChange(event.target.value)}
-              placeholder={t.rooms.searchPlaceholder}
-              aria-label={t.rooms.searchLabel}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-900 shadow-sm transition outline-none placeholder:text-slate-400 focus:border-indigo-400"
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder="ຄົ້ນຫາເລກຫ້ອງ ຫຼື ຊື່ຜູ້ເຊົ່າ..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-1.5 pr-3 pl-9 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white"
             />
           </div>
 
-          <p className="ml-auto text-xs text-slate-500">
-            {t.rooms.resultCount(visibleRooms.length, rooms.length)}
-          </p>
+          <div className="flex items-center rounded-xl border border-slate-200 bg-slate-100/70 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "rounded-lg p-1.5 text-slate-600 transition",
+                viewMode === "grid"
+                  ? "bg-white text-indigo-600 shadow-xs"
+                  : "hover:text-slate-900",
+              )}
+              title="ມຸມມອງຜັງຫ້ອງ (Grid)"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "rounded-lg p-1.5 text-slate-600 transition",
+                viewMode === "list"
+                  ? "bg-white text-indigo-600 shadow-xs"
+                  : "hover:text-slate-900",
+              )}
+              title="ມຸມມອງຕາຕະລາງ (List)"
+            >
+              <LayoutList className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Main Room View */}
       {visibleRooms.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-sm text-slate-500">{t.rooms.noMatches}</p>
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-xs">
+          <Home className="mx-auto size-10 text-slate-300" />
+          <h3 className="mt-3 text-base font-semibold text-slate-800">
+            ບໍ່ພົບຫ້ອງພັກທີ່ກົງກັບເງື່ອນໄຂ
+          </h3>
+          <p className="mt-1 text-xs text-slate-500">
+            ລອງລຶບຕົວຕອງ ຫຼື ກົດປຸ່ມສ້າງຂໍ້ມູນຕົວຢ່າງ (Seed Demo Data) ດ້ານເທິງ
+          </p>
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visibleRooms.map((room) => (
-            <article
-              key={room.id}
-              className="relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
-            >
-              {/* Full-card overlay button, so the card is keyboard-activatable. */}
-              <button
-                type="button"
-                onClick={(event) => openRoom(room.id, event.currentTarget)}
-                aria-label={t.rooms.openDetailsAria(room.number)}
-                className="absolute inset-0 rounded-2xl"
-              />
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {t.rooms.roomTitle(room.number)}
-                  </h3>
-                  <StatusBadge status={room.status} />
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
-                  {" · "}
-                  {[
-                    room.buildingName,
-                    room.floorName && !/^\d{3,}$/.test(room.floorName.trim())
-                      ? (room.floorName.startsWith("ຊັ້ນ") ? room.floorName : t.rooms.floorLabel(room.floor))
-                      : t.rooms.floorLabel(room.floor),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
+        /* Roomie Floor-by-Floor Grouped Grid */
+        <div className="space-y-8">
+          {roomsByFloor.map(([floorNumber, floorRooms]) => {
+            const flrVacant = floorRooms.filter((r) => r.status === "vacant").length;
+            const flrOccupied = floorRooms.filter((r) => r.status === "occupied").length;
+            const flrMaint = floorRooms.filter(
+              (r) => r.status === "maintenance" || r.status === "reserved",
+            ).length;
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-baseline justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    {t.rooms.fields.tenant}
-                  </p>
-                  <p className="truncate text-sm font-medium text-slate-700">
-                    {room.tenantName}
-                  </p>
+            return (
+              <section key={floorNumber} className="space-y-3.5">
+                {/* Floor Header Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-xs">
+                      {floorNumber}
+                    </span>
+                    <h3 className="text-base font-bold text-slate-900">
+                      ຊັ້ນ {floorNumber}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      ({floorRooms.length} ຫ້ອງ)
+                    </span>
+                  </div>
+
+                  {/* Floor Stats */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-semibold text-emerald-700 border border-emerald-200/60">
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                      ຫວ່າງ {flrVacant}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 font-semibold text-rose-700 border border-rose-200/60">
+                      <span className="size-1.5 rounded-full bg-rose-500" />
+                      ມີຜູ້ເຊົ່າ {flrOccupied}
+                    </span>
+                    {flrMaint > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-700 border border-amber-200/60">
+                        <span className="size-1.5 rounded-full bg-amber-500" />
+                        ສ້ອມແປງ {flrMaint}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-base font-semibold text-slate-900">
-                    {formatCurrency(room.monthlyRate)}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {t.rooms.fields.perMonth}
-                  </p>
+
+                {/* Grid of Rooms on this Floor */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {floorRooms.map((room) => {
+                    const isVacant = room.status === "vacant";
+                    const isOccupied = room.status === "occupied";
+                    const isMaint =
+                      room.status === "maintenance" || room.status === "reserved";
+
+                    return (
+                      <div
+                        key={room.id}
+                        className={cn(
+                          "group relative flex flex-col justify-between rounded-3xl border-2 p-5 transition-all duration-200 shadow-xs hover:shadow-md",
+                          isVacant &&
+                            "border-emerald-300 bg-white hover:border-emerald-500 hover:bg-emerald-50/20",
+                          isOccupied &&
+                            "border-rose-300 bg-white hover:border-rose-500 hover:bg-rose-50/20",
+                          isMaint &&
+                            "border-amber-300 bg-white hover:border-amber-500 hover:bg-amber-50/20",
+                        )}
+                      >
+                        <div>
+                          {/* Room Number & Status */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "size-2.5 rounded-full shrink-0",
+                                  isVacant && "bg-emerald-500 ring-4 ring-emerald-100",
+                                  isOccupied && "bg-rose-500 ring-4 ring-rose-100",
+                                  isMaint && "bg-amber-500 ring-4 ring-amber-100",
+                                )}
+                              />
+                              <h4 className="text-xl font-black tracking-tight text-slate-900">
+                                ຫ້ອງ {room.number}
+                              </h4>
+                            </div>
+
+                            <StatusBadge status={room.status} />
+                          </div>
+
+                          {/* Room Type & Building */}
+                          <p className="mt-1 text-xs text-slate-500">
+                            {room.roomTypeName || "Standard"} ·{" "}
+                            {room.buildingName || "ອາຄານ A"}
+                          </p>
+
+                          {/* Middle Section: Occupant or Vacant Info */}
+                          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                            {isOccupied ? (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold tracking-wider text-rose-700 uppercase">
+                                  ຜູ້ເຊົ່າປັດຈຸບັນ
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <User className="size-4 shrink-0 text-slate-500" />
+                                  <p className="truncate text-sm font-bold text-slate-900">
+                                    {room.tenantName}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : isVacant ? (
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">
+                                  ສະຖານະຫ້ອງພັກ
+                                </span>
+                                <p className="text-xs font-semibold text-emerald-800">
+                                  🟢 ຫ້ອງຫວ່າງພ້ອມເຂົ້າພັກ
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] font-bold tracking-wider text-amber-700 uppercase">
+                                  ສະຖານະຫ້ອງພັກ
+                                </span>
+                                <p className="text-xs font-semibold text-amber-800">
+                                  🟡 ຢູ່ໃນໄລຍະສ້ອມແປງ / ຈອງ
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Monthly Rent */}
+                            <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-baseline justify-between">
+                              <span className="text-xs text-slate-500">
+                                ຄ່າເຊົ່າ:
+                              </span>
+                              <span className="text-sm font-extrabold text-slate-900">
+                                {formatCurrency(room.monthlyRate)}
+                                <span className="text-[11px] font-normal text-slate-400">
+                                  /ເດືອນ
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Action Area (Room-Centric Interactive Buttons) */}
+                        <div className="mt-4 pt-3 border-t border-slate-100">
+                          {isVacant ? (
+                            <button
+                              type="button"
+                              onClick={() => setQuickCheckInRoom(room)}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 active:scale-[0.98]"
+                            >
+                              <UserPlus className="size-4" />
+                              <span>+ ເອົາຜູ້ເຊົ່າເຂົ້າພັກດ່ວນ</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => openRoom(room.id, e.currentTarget)}
+                              className="w-full inline-flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 group-hover:border-slate-300"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Receipt className="size-3.5 text-slate-400" />
+                                <span>ເບິ່ງສັນຍາ, ໃບບິນ & ມິເຕີ</span>
+                              </span>
+                              <ArrowRight className="size-3.5 text-slate-400 transition group-hover:translate-x-0.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            </article>
-          ))}
+              </section>
+            );
+          })}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        /* List / Table Mode */
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 uppercase">
                 <tr>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.number}
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.floor}
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.type}
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.rate}
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.tenant}
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    {t.rooms.fields.status}
-                  </th>
+                  <th className="px-5 py-3.5">ເລກຫ້ອງ</th>
+                  <th className="px-5 py-3.5">ຊັ້ນ</th>
+                  <th className="px-5 py-3.5">ປະເພດຫ້ອງ</th>
+                  <th className="px-5 py-3.5">ຄ່າເຊົ່າ</th>
+                  <th className="px-5 py-3.5">ຜູ້ເຊົ່າປັດຈຸບັນ</th>
+                  <th className="px-5 py-3.5">ສະຖານະ</th>
+                  <th className="px-5 py-3.5 text-right">ຈັດການ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {visibleRooms.map((room) => (
                   <tr
                     key={room.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={t.rooms.openDetailsAria(room.number)}
-                    onClick={(event) => openRoom(room.id, event.currentTarget)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openRoom(room.id, event.currentTarget);
-                      }
-                    }}
-                    className="cursor-pointer transition hover:bg-slate-50/60"
+                    className="hover:bg-slate-50/60 transition"
                   >
-                    <td className="px-5 py-3.5 font-medium text-slate-900">
-                      {t.rooms.roomTitle(room.number)}
+                    <td className="px-5 py-3.5 font-bold text-slate-900">
+                      ຫ້ອງ {room.number}
                     </td>
-                    <td className="px-5 py-3.5">
-                      {[room.buildingName, room.floorName || t.rooms.floorLabel(room.floor)].filter(Boolean).join(" · ")}
+                    <td className="px-5 py-3.5 text-xs text-slate-500">
+                      ຊັ້ນ {room.floor}
                     </td>
-                    <td className="px-5 py-3.5">
-                      {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
+                    <td className="px-5 py-3.5 text-xs">
+                      {room.roomTypeName || "Standard"}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-900 font-medium">
+                    <td className="px-5 py-3.5 font-semibold text-slate-900">
                       {formatCurrency(room.monthlyRate)}
-                      <span className="text-xs text-slate-400 font-normal">
-                        {" "}
-                        {t.rooms.fields.perMonth}
-                      </span>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-700">{room.tenantName}</td>
+                    <td className="px-5 py-3.5 font-medium text-slate-800">
+                      {room.tenantName}
+                    </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={room.status} />
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      {room.status === "vacant" ? (
+                        <button
+                          type="button"
+                          onClick={() => setQuickCheckInRoom(room)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                        >
+                          <UserPlus className="size-3.5" />
+                          <span>ເຊັກອິນດ່ວນ</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => openRoom(room.id, e.currentTarget)}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <span>ລາຍລະອຽດ</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -466,6 +665,15 @@ export function RoomInventoryView({
         </div>
       )}
 
+      {/* Quick Check-in Modal (Instant 0-refresh Check-in) */}
+      <QuickCheckInModal
+        room={quickCheckInRoom}
+        isOpen={Boolean(quickCheckInRoom)}
+        onClose={() => setQuickCheckInRoom(null)}
+        onSuccess={handleQuickCheckInSuccess}
+      />
+
+      {/* Room Detail Drawer (3 Tabs: Tenant & Lease, Invoices & Status, Meter History) */}
       {selectedRoom ? (
         <RoomDetailDrawer
           key={selectedRoom.id}

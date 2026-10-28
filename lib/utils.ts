@@ -141,18 +141,18 @@ export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
 /** Tailwind badge classes per room status (used by the room + dashboard views). */
 export const ROOM_STATUS_BADGE_CLASSES: Record<RoomStatus, string> = {
   vacant: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  occupied: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+  occupied: "bg-rose-50 text-rose-700 ring-rose-600/20",
   maintenance: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  reserved: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  reserved: "bg-amber-50 text-amber-700 ring-amber-600/20",
   cleaning: "bg-teal-50 text-teal-700 ring-teal-600/20",
   inactive: "bg-slate-100 text-slate-600 ring-slate-500/20",
 };
 
 export const ROOM_STATUS_DOT_CLASSES: Record<RoomStatus, string> = {
   vacant: "bg-emerald-500",
-  occupied: "bg-indigo-500",
+  occupied: "bg-rose-500",
   maintenance: "bg-amber-500",
-  reserved: "bg-sky-500",
+  reserved: "bg-amber-500",
   cleaning: "bg-teal-500",
   inactive: "bg-slate-400",
 };

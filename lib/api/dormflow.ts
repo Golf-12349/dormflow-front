@@ -356,7 +356,7 @@ function mapRoom(
     roomTypeId: room.roomTypeId,
     roomTypeName: room.roomTypeName,
     type: mapRoomType(room.roomTypeName),
-    status: mapRoomStatus(room.status),
+    status: contract ? "occupied" : mapRoomStatus(room.status),
     monthlyRate: room.monthlyRent,
     depositAmount: room.depositAmount ?? 0,
     maximumOccupants: room.maximumOccupants ?? 1,

@@ -22,3 +22,4 @@ export async function POST(_request: NextRequest) {
   const result = await seedSomsakAction();
   return NextResponse.json(result);
 }
+
