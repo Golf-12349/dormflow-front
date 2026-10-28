@@ -11,7 +11,6 @@ import {
   getUtilityRates,
 } from "@/lib/api/dormflow";
 import type { Tenant, UtilityReading } from "@/types";
-import { MasterDataManager } from "@/components/management/master-data-manager";
 import { AddRoomForm } from "./add-room-form";
 import { RoomInventoryView } from "./room-inventory-view";
 
@@ -80,7 +79,6 @@ export default async function RoomsPage() {
           <p className="text-sm text-slate-500">{t.rooms.subtitle(rooms.length)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <MasterDataManager options={roomCreationOptions} />
           <AddRoomForm options={roomCreationOptions} />
         </div>
       </div>

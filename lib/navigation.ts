@@ -101,15 +101,15 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         label: "ຈັດການຫໍພັກ",
-        href: "/management/properties",
+        href: "/master-data",
         icon: Building2,
         description: "ຕັ້ງຄ່າໂຄງສ້າງຫໍພັກ, ອາຄານ, ຊັ້ນ ແລະ ປະເພດຫ້ອງ",
         children: [
           {
-            label: "ພາບລວມໂຄງສ້າງ",
-            href: "/management/properties",
-            icon: Building2,
-            description: "ຈັດການຂໍ້ມູນພື້ນຖານຫໍພັກແບບລວມສູນ",
+            label: "ຈັດການຂໍ້ມູນພື້ນຖານ",
+            href: "/master-data",
+            icon: Settings2,
+            description: "ຈັດການຫໍພັກ, ອາຄານ, ຊັ້ນ ແລະ ປະເພດຫ້ອງແບບຄົບວົງຈອນ",
           },
           {
             label: "ຫໍພັກ",
