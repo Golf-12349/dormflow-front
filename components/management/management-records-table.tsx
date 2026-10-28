@@ -119,6 +119,17 @@ function enrichFields(
   });
 }
 
+export interface ManagementRecordsTableGroup {
+  slug: string;
+  title: string;
+}
+
+export interface ManagementRecordsTableModule {
+  slug: string;
+  title: string;
+  description: string;
+}
+
 export function ManagementRecordsTable({
   group,
   module,
@@ -130,8 +141,8 @@ export function ManagementRecordsTable({
   reportPeriod,
   lookupOptions,
 }: {
-  group: ManagementGroup;
-  module: ManagementModule;
+  group: ManagementRecordsTableGroup;
+  module: ManagementRecordsTableModule;
   records: ManagementRecords;
   relatedRecords?: ManagementRecords;
   detailReportRecords?: ManagementRecords;

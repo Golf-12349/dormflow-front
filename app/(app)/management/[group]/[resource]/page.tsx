@@ -148,8 +148,15 @@ export default async function ManagementModulePage({
 
   return (
     <ManagementRecordsTable
-      group={result.group}
-      module={result.module}
+      group={{
+        slug: result.group.slug,
+        title: result.group.title,
+      }}
+      module={{
+        slug: result.module.slug,
+        title: result.module.title,
+        description: result.module.description,
+      }}
       records={records}
       relatedRecords={outstandingRecords}
       detailReportRecords={detailReportRecords}
