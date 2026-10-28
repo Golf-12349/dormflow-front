@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertCircle, CheckCircle2, Printer, Receipt } from "lucide-react";
+import { AlertCircle, CheckCircle2, CreditCard, Printer, Receipt } from "lucide-react";
 
 import { recordInvoicePaymentAction } from "@/lib/actions/billing";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
+import { QuickPaymentModal } from "@/components/billing/quick-payment-modal";
 import { t } from "@/lib/i18n";
 import {
   INVOICE_STATUS_BADGE_CLASSES,
@@ -34,6 +35,8 @@ export function InvoiceList({ entries }: { entries: InvoiceListEntry[] }) {
     entry: InvoiceListEntry;
     docType: PrintDocumentType;
   } | null>(null);
+
+  const [paymentEntry, setPaymentEntry] = useState<InvoiceListEntry | null>(null);
 
   return (
     <section aria-labelledby="invoice-list-title" className="mt-6 space-y-4">
@@ -89,6 +92,7 @@ export function InvoiceList({ entries }: { entries: InvoiceListEntry[] }) {
                 <InvoiceRow
                   key={entry.invoice.id}
                   entry={entry}
+                  onPay={(item) => setPaymentEntry(item)}
                   onPrint={(docType) => setPrintState({ entry, docType })}
                 />
               ))}
@@ -103,46 +107,33 @@ export function InvoiceList({ entries }: { entries: InvoiceListEntry[] }) {
           onClose={() => setPrintState(null)}
         />
       ) : null}
+
+      {paymentEntry ? (
+        <QuickPaymentModal
+          entry={paymentEntry}
+          onClose={() => setPaymentEntry(null)}
+        />
+      ) : null}
     </section>
   );
 }
 
 function InvoiceRow({
   entry,
+  onPay,
   onPrint,
 }: {
   entry: InvoiceListEntry;
+  onPay: (entry: InvoiceListEntry) => void;
   onPrint: (docType: PrintDocumentType) => void;
 }) {
   const { invoice, roomNumber, tenantName } = entry;
   const outstanding = Math.max(0, invoice.total - invoice.paidAmount);
-  const [state, formAction, isPending] = useActionState(
-    recordInvoicePaymentAction,
-    INITIAL_PAYMENT_STATE,
-  );
 
   return (
-    <tr className="align-top">
+    <tr className="align-middle">
       <th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-        <ActionResultToast state={state} />
         {invoice.invoiceNumber}
-        {state.status !== "idle" && state.message ? (
-          <span
-            role="status"
-            aria-live="polite"
-            className={cn(
-              "mt-2 flex items-start gap-1 text-xs font-normal",
-              state.status === "success" ? "text-emerald-700" : "text-rose-700",
-            )}
-          >
-            {state.status === "success" ? (
-              <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            ) : (
-              <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            )}
-            {state.message}
-          </span>
-        ) : null}
       </th>
       <td className="whitespace-nowrap px-4 py-3 text-slate-600">
         {t.rooms.roomTitle(roomNumber)}
@@ -172,8 +163,18 @@ function InvoiceRow({
           {INVOICE_STATUS_LABELS[invoice.status]}
         </span>
       </td>
-      <td className="min-w-64 px-4 py-3">
+      <td className="whitespace-nowrap px-4 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
+          {outstanding > 0 ? (
+            <button
+              type="button"
+              onClick={() => onPay(entry)}
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-500"
+            >
+              <CreditCard className="size-3.5" aria-hidden="true" />
+              ຮັບຊຳລະເງິນ
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => onPrint("invoice")}
@@ -193,74 +194,6 @@ function InvoiceRow({
             </button>
           ) : null}
         </div>
-        {outstanding > 0 ? (
-          <form action={formAction} className="mt-2 space-y-1.5">
-            <input type="hidden" name="invoiceId" value={invoice.id} />
-            <label
-              htmlFor={`${invoice.id}-payment`}
-              className="block text-xs font-medium text-slate-600"
-            >
-              {t.billing.invoice.payment.amount}
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <input
-                id={`${invoice.id}-payment`}
-                name="paymentAmount"
-                type="number"
-                min="0.01"
-                max={outstanding}
-                step="0.01"
-                defaultValue={outstanding}
-                inputMode="decimal"
-                required
-                aria-invalid={state.fieldErrors?.paymentAmount ? true : undefined}
-                aria-describedby={
-                  state.fieldErrors?.paymentAmount
-                    ? `${invoice.id}-payment-error`
-                    : undefined
-                }
-                className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-indigo-400"
-              />
-              <select
-                name="paymentMethod"
-                defaultValue="Cash"
-                aria-label={t.billing.invoice.payment.method}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-indigo-400"
-              >
-                <option value="Cash">{t.billing.invoice.payment.methods.Cash}</option>
-                <option value="BankTransfer">{t.billing.invoice.payment.methods.BankTransfer}</option>
-                <option value="QrCode">{t.billing.invoice.payment.methods.QrCode}</option>
-                <option value="Other">{t.billing.invoice.payment.methods.Other}</option>
-              </select>
-            </div>
-            <div className="flex items-start gap-1.5">
-              <input
-                name="referenceNumber"
-                type="text"
-                placeholder={t.billing.invoice.payment.referenceNumber}
-                aria-label={t.billing.invoice.payment.referenceNumber}
-                className="w-36 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-900 outline-none focus:border-indigo-400"
-              />
-              <button
-                type="submit"
-                disabled={isPending}
-                className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isPending
-                  ? t.billing.invoice.payment.saving
-                  : t.billing.invoice.payment.record}
-              </button>
-            </div>
-            {state.fieldErrors?.paymentAmount ? (
-              <p
-                id={`${invoice.id}-payment-error`}
-                className="text-xs text-rose-600"
-              >
-                {state.fieldErrors.paymentAmount}
-              </p>
-            ) : null}
-          </form>
-        ) : null}
       </td>
     </tr>
   );

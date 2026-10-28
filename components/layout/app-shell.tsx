@@ -19,10 +19,12 @@ import type { AdminUser } from "@/types";
 export function AppShell({
   user,
   alertCount,
+  dormitories,
   children,
 }: {
   user: AdminUser;
   alertCount: number;
+  dormitories?: Array<{ id: string; name: string }>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -75,6 +77,7 @@ export function AppShell({
         <Topbar
           user={user}
           alertCount={alertCount}
+          dormitories={dormitories}
           onOpenNavigation={openDrawer}
         />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>

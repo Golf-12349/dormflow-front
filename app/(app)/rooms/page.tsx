@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { t } from "@/lib/i18n";
 import {
+  getAllInvoicesGroupedByRoom,
+  getAllMaintenanceRequestsGroupedByRoom,
   getAllUtilityReadingsGroupedByRoom,
   getRoomCreationOptions,
   getRooms,
@@ -26,14 +28,23 @@ export const metadata: Metadata = {
  * history and the utility rates — is fetched here and passed down as plain props.
  */
 export default async function RoomsPage() {
-  const [rooms, tenants, rates, roomCreationOptions, groupedReadings] =
-    await Promise.all([
-      getRooms(),
-      getTenants(),
-      getUtilityRates(),
-      getRoomCreationOptions(),
-      getAllUtilityReadingsGroupedByRoom(),
-    ]);
+  const [
+    rooms,
+    tenants,
+    rates,
+    roomCreationOptions,
+    groupedReadings,
+    invoicesByRoomId,
+    maintenanceByRoomId,
+  ] = await Promise.all([
+    getRooms(),
+    getTenants(),
+    getUtilityRates(),
+    getRoomCreationOptions(),
+    getAllUtilityReadingsGroupedByRoom(),
+    getAllInvoicesGroupedByRoom(),
+    getAllMaintenanceRequestsGroupedByRoom(),
+  ]);
 
   /**
    * Meter history for every room, pre-loaded in one bulk query.
@@ -78,6 +89,8 @@ export default async function RoomsPage() {
         rooms={roomItems}
         tenantsByRoomId={tenantsByRoomId}
         readingsByRoomId={readingsByRoomId}
+        invoicesByRoomId={invoicesByRoomId}
+        maintenanceByRoomId={maintenanceByRoomId}
         rates={rates}
         options={roomCreationOptions}
       />

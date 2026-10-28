@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { getDormitories } from "@/lib/api/dormflow";
 import { verifySession } from "@/lib/session";
 
 /**
@@ -17,10 +18,17 @@ export default async function AuthenticatedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await verifySession();
+  const [session, dormitories] = await Promise.all([
+    verifySession(),
+    getDormitories(),
+  ]);
 
   return (
-    <AppShell user={session.user} alertCount={0}>
+    <AppShell
+      user={session.user}
+      alertCount={0}
+      dormitories={dormitories.map((d) => ({ id: d.id, name: d.name }))}
+    >
       {children}
     </AppShell>
   );

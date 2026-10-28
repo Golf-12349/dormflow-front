@@ -312,6 +312,20 @@ export interface FloorOccupancy {
   reserved: number;
 }
 
+export interface MaintenanceItem {
+  id: string;
+  roomId: string;
+  tenantId?: string | null;
+  title: string;
+  description?: string | null;
+  category?: string;
+  priority: string;
+  status: string;
+  cost?: number;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Filters (used by the list screens)                                         */
 /* -------------------------------------------------------------------------- */

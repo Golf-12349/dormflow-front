@@ -224,6 +224,76 @@ export async function saveMeterReadingAction(
   };
 }
 
+export interface BatchMeterEntryItem {
+  roomId: string;
+  roomNumber: string;
+  electricPrevious: number;
+  electricCurrent: number;
+  waterPrevious: number;
+  waterCurrent: number;
+}
+
+export interface BatchMeterResult {
+  success: boolean;
+  savedCount: number;
+  errors: string[];
+}
+
+export async function batchSaveMeterReadingsAction(
+  period: string,
+  entries: BatchMeterEntryItem[],
+): Promise<BatchMeterResult> {
+  await verifySession();
+  if (!PERIOD_PATTERN.test(period) || period > getCurrentPeriod()) {
+    return {
+      success: false,
+      savedCount: 0,
+      errors: [t.billing.meter.errors.invalidPeriod],
+    };
+  }
+
+  let savedCount = 0;
+  const errors: string[] = [];
+
+  for (const item of entries) {
+    if (
+      !Number.isFinite(item.electricCurrent) ||
+      !Number.isFinite(item.waterCurrent) ||
+      item.electricCurrent < item.electricPrevious ||
+      item.waterCurrent < item.waterPrevious
+    ) {
+      errors.push(`ຫ້ອງ ${item.roomNumber}: ເລກມິເຕີໃໝ່ຕ້ອງຫຼາຍກວ່າຫຼືເທົ່າກັບເລກມິເຕີເກົ່າ`);
+      continue;
+    }
+
+    const res = await createUtilityReading({
+      roomId: item.roomId,
+      period,
+      electricPrevious: item.electricPrevious,
+      electricCurrent: item.electricCurrent,
+      waterPrevious: item.waterPrevious,
+      waterCurrent: item.waterCurrent,
+    });
+
+    if (res.success) {
+      savedCount++;
+    } else {
+      errors.push(`ຫ້ອງ ${item.roomNumber}: ${localizeDataLayerError(res.error)}`);
+    }
+  }
+
+  if (savedCount > 0) {
+    revalidatePath("/billing");
+    revalidatePath("/rooms");
+  }
+
+  return {
+    success: errors.length === 0,
+    savedCount,
+    errors,
+  };
+}
+
 /**
  * Lao wording for the English errors `createInvoice()` in
  * `lib/api/dormflow.ts` can return (the data layer stays English by

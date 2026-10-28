@@ -1,10 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, LayoutGrid, Table } from "lucide-react";
 
 import type { ManagementGroup, ManagementModule } from "@/lib/management";
 import type { AnalyticsOverview, ManagementRecords } from "@/lib/api/management";
 import { t } from "@/lib/i18n";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   MANAGEMENT_CREATE_FIELDS,
   MANAGEMENT_OPERATIONS,
@@ -17,6 +20,9 @@ import {
   ManagementReportExportForm,
   ManagementWorkflowForm,
 } from "@/components/management/management-workflow-form";
+import { ParcelsView } from "@/components/management/services/parcels-view";
+import { MaintenanceView } from "@/components/management/services/maintenance-view";
+import { ParkingView } from "@/components/management/services/parking-view";
 
 function labelFor(key: string): string {
   const localized = t.management.table.fields[
@@ -134,6 +140,9 @@ export function ManagementRecordsTable({
   reportPeriod?: { periodFrom: string; periodTo: string; detailReport?: string };
   lookupOptions?: Record<string, ManagementSelectOption[]>;
 }) {
+  const isSpecialService = ["parcels", "maintenance-requests", "parking"].includes(module.slug);
+  const [displayMode, setDisplayMode] = useState<"visual" | "table">("visual");
+
   const createFields = enrichFields(
     MANAGEMENT_CREATE_FIELDS[module.slug],
     lookupOptions,
@@ -199,6 +208,40 @@ export function ManagementRecordsTable({
           <p className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
             {t.management.table.itemCount(records.totalCount.toLocaleString())}
           </p>
+
+          {isSpecialService ? (
+            <div
+              role="group"
+              className="inline-flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1"
+            >
+              <button
+                type="button"
+                onClick={() => setDisplayMode("visual")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition",
+                  displayMode === "visual"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                <LayoutGrid className="size-3.5" />
+                ມຸມມອງກາດ (Cards)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode("table")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition",
+                  displayMode === "table"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                <Table className="size-3.5" />
+                ຕາຕະລາງ (Table)
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -309,7 +352,15 @@ export function ManagementRecordsTable({
         </div>
       ) : null}
 
-      {records.items.length === 0 ? (
+      {isSpecialService && displayMode === "visual" ? (
+        module.slug === "parcels" ? (
+          <ParcelsView records={records} lookupOptions={lookupOptions} />
+        ) : module.slug === "maintenance-requests" ? (
+          <MaintenanceView records={records} lookupOptions={lookupOptions} />
+        ) : (
+          <ParkingView records={records} lookupOptions={lookupOptions} />
+        )
+      ) : records.items.length === 0 ? (
         <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-5 text-center">
           <Database className="size-6 text-slate-300" aria-hidden="true" />
           <p className="mt-2 text-sm font-semibold text-slate-800">

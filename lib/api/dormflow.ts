@@ -15,6 +15,7 @@ import type {
   Invoice,
   InvoiceFilters,
   InvoiceStatus,
+  MaintenanceItem,
   RevenuePoint,
   Room,
   RoomStatus,
@@ -238,6 +239,15 @@ export async function getOrganizations(): Promise<ApiOrganization[]> {
       return [];
     }
     throw error;
+  }
+}
+
+/** Fetches accessible dormitories. */
+export async function getDormitories(): Promise<ApiDormitory[]> {
+  try {
+    return await getApiDormitories();
+  } catch {
+    return [];
   }
 }
 
@@ -1460,6 +1470,57 @@ export async function assignTenantToRoom(input: {
       return { success: false, error: error.message };
     }
     throw error;
+  }
+}
+
+export async function getAllInvoicesGroupedByRoom(): Promise<Record<string, Invoice[]>> {
+  try {
+    const invoices = await getInvoices();
+    const grouped: Record<string, Invoice[]> = {};
+    for (const invoice of invoices) {
+      if (!invoice.roomId) continue;
+      if (!grouped[invoice.roomId]) grouped[invoice.roomId] = [];
+      grouped[invoice.roomId].push(invoice);
+    }
+    return grouped;
+  } catch {
+    return {};
+  }
+}
+
+export async function getAllMaintenanceRequestsGroupedByRoom(): Promise<Record<string, MaintenanceItem[]>> {
+  try {
+    const response = await apiRequest<{ items?: unknown[] } | unknown[]>("/maintenance-requests", {
+      query: { pageSize: 100 },
+      cache: "no-store",
+    });
+    const items = Array.isArray(response)
+      ? response
+      : Array.isArray((response as { items?: unknown[] })?.items)
+        ? (response as { items: unknown[] }).items
+        : [];
+    const grouped: Record<string, MaintenanceItem[]> = {};
+    for (const raw of items as Array<Record<string, unknown>>) {
+      const roomId = String(raw.roomId ?? raw.RoomId ?? "");
+      if (!roomId) continue;
+      if (!grouped[roomId]) grouped[roomId] = [];
+      grouped[roomId].push({
+        id: String(raw.id ?? raw.Id ?? ""),
+        roomId,
+        tenantId: raw.tenantId ? String(raw.tenantId) : null,
+        title: String(raw.title ?? raw.Title ?? ""),
+        description: raw.description ? String(raw.description) : null,
+        category: raw.category ? String(raw.category) : "General",
+        priority: String(raw.priority ?? raw.Priority ?? "Normal"),
+        status: String(raw.status ?? raw.Status ?? "Pending"),
+        cost: typeof raw.actualCost === "number" ? raw.actualCost : undefined,
+        createdAt: String(raw.createdAt ?? raw.CreatedAt ?? new Date().toISOString()),
+        completedAt: raw.completedAt ? String(raw.completedAt) : null,
+      });
+    }
+    return grouped;
+  } catch {
+    return {};
   }
 }
 

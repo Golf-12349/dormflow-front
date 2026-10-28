@@ -14,7 +14,7 @@ import {
 import { RoomDetailDrawer, type UtilityRates } from "./room-detail-drawer";
 import { StatusBadge } from "./status-badge";
 import type { RoomCreationOptions } from "@/lib/api/dormflow";
-import type { Room, RoomStatus, Tenant, UtilityReading } from "@/types";
+import type { Invoice, MaintenanceItem, Room, RoomStatus, Tenant, UtilityReading } from "@/types";
 
 export interface RoomItem extends Room {
   tenantName: string;
@@ -26,6 +26,8 @@ interface RoomInventoryViewProps {
   tenantsByRoomId: Record<string, Tenant>;
   /** Meter history per room id, newest period first, for the drawer. */
   readingsByRoomId: Record<string, UtilityReading[]>;
+  invoicesByRoomId?: Record<string, Invoice[]>;
+  maintenanceByRoomId?: Record<string, MaintenanceItem[]>;
   /** Utility pricing in use, shown in the drawer. */
   rates: UtilityRates;
   options?: RoomCreationOptions;
@@ -115,6 +117,8 @@ export function RoomInventoryView({
   rooms,
   tenantsByRoomId,
   readingsByRoomId,
+  invoicesByRoomId,
+  maintenanceByRoomId,
   rates,
   options,
 }: RoomInventoryViewProps) {
@@ -131,9 +135,9 @@ export function RoomInventoryView({
   const roomTrigger = useRef<HTMLElement | null>(null);
 
   /** Floors come from the data, so a new floor needs no UI change. */
-  const floors = [...new Set(rooms.map((room) => room.floor))].sort(
-    (a, b) => a - b,
-  );
+  const floors = [
+    ...new Set(rooms.map((room) => (room.floor > 0 && room.floor <= 200 ? room.floor : 1))),
+  ].sort((a, b) => a - b);
 
   /** 5.5 — floor and status are read from the URL on every render. */
   const floor = parseFloorFilter(searchParams.get(FLOOR_PARAM), floors);
@@ -359,14 +363,15 @@ export function RoomInventoryView({
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
                   {room.roomTypeName || (t.rooms.types[room.type] ?? roomTypeLabel(room.type))}
-                  {room.buildingName || room.floorName ? (
-                    <>
-                      {" · "}
-                      {[room.buildingName, room.floorName || t.rooms.floorLabel(room.floor)].filter(Boolean).join(" · ")}
-                    </>
-                  ) : (
-                    <> · {t.rooms.floorLabel(room.floor)}</>
-                  )}
+                  {" · "}
+                  {[
+                    room.buildingName,
+                    room.floorName && !/^\d{3,}$/.test(room.floorName.trim())
+                      ? (room.floorName.startsWith("ຊັ້ນ") ? room.floorName : t.rooms.floorLabel(room.floor))
+                      : t.rooms.floorLabel(room.floor),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
 
@@ -467,6 +472,8 @@ export function RoomInventoryView({
           room={selectedRoom}
           tenant={tenantsByRoomId[selectedRoom.id] ?? null}
           readings={readingsByRoomId[selectedRoom.id] ?? []}
+          invoices={invoicesByRoomId?.[selectedRoom.id] ?? []}
+          maintenanceRequests={maintenanceByRoomId?.[selectedRoom.id] ?? []}
           rates={rates}
           options={options}
           onClose={closeRoom}

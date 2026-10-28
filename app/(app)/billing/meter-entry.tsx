@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, LayoutGrid, Loader2, TableProperties } from "lucide-react";
 
 import { saveMeterReadingAction } from "@/lib/actions/billing";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
 import { t } from "@/lib/i18n";
 import { cn, formatUnitPrice } from "@/lib/utils";
 import type { MeterReadingFormState, Room, UtilityReading } from "@/types";
+import { BatchMeterSheet } from "./batch-meter-sheet";
 
 export type MeterRoomKind =
   | { kind: "recorded"; reading: UtilityReading }
@@ -55,10 +56,12 @@ export function MeterEntry({
   canRecord,
   rates,
 }: MeterEntryProps) {
+  const [viewMode, setViewMode] = useState<"sheet" | "cards">("sheet");
   const done = rooms.filter((entry) => entry.kind.kind === "recorded").length;
+
   return (
     <section aria-labelledby="meter-entry-title" className="mt-6 space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2
             id="meter-entry-title"
@@ -70,9 +73,44 @@ export function MeterEntry({
             {t.billing.meter.sectionSubtitle(periodLabel)}
           </p>
         </div>
-        <p className="text-xs text-slate-500">
-          {t.billing.meter.progress(done, rooms.length)}
-        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs text-slate-500">
+            {t.billing.meter.progress(done, rooms.length)}
+          </p>
+
+          <div
+            role="group"
+            className="inline-flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode("sheet")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition",
+                viewMode === "sheet"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              <TableProperties className="size-3.5" />
+              ຕາຕະລາງລວມ (Sheet)
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition",
+                viewMode === "cards"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              <LayoutGrid className="size-3.5" />
+              ແຍກຕາມຫ້ອງ (Cards)
+            </button>
+          </div>
+        </div>
       </div>
       {rooms.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
@@ -85,6 +123,14 @@ export function MeterEntry({
         >
           {t.billing.meter.errors.futurePeriod}
         </p>
+      ) : viewMode === "sheet" ? (
+        <BatchMeterSheet
+          rooms={rooms}
+          period={period}
+          periodLabel={periodLabel}
+          canRecord={canRecord}
+          rates={rates}
+        />
       ) : (
         <div className="grid gap-3">
           {rooms.map((entry) => (
