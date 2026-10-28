@@ -215,3 +215,4 @@ export function ParkingView({ records, lookupOptions }: ParkingViewProps) {
     </div>
   );
 }
+

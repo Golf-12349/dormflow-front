@@ -230,3 +230,4 @@ export function ParcelsView({ records, lookupOptions }: ParcelsViewProps) {
     </div>
   );
 }
+

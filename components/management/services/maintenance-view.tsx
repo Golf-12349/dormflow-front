@@ -287,3 +287,4 @@ export function MaintenanceView({ records, lookupOptions }: MaintenanceViewProps
     </div>
   );
 }
+

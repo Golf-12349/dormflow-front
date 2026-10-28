@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Building2, Check, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { Bell, Building2, Check, ChevronDown, LogOut, Menu, Search, User } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth";
 import { t } from "@/lib/i18n";
@@ -152,6 +152,15 @@ export function Topbar({
             className="w-44 rounded-xl border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-900 shadow-sm transition outline-none placeholder:text-slate-400 focus:border-indigo-400 lg:w-60"
           />
         </form>
+
+        <Link
+          href="/portal"
+          title="ເຂົ້າເບິ່ງມຸມມອງຜູ້ເຊົ່າ (Tenant Portal)"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-2xs transition hover:bg-indigo-100"
+        >
+          <User className="size-3.5" />
+          <span className="hidden md:inline">ມຸມມອງຜູ້ເຊົ່າ (Portal)</span>
+        </Link>
 
         <Link
           href="/dashboard"

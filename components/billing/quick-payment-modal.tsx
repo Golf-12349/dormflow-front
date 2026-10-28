@@ -224,3 +224,4 @@ export function QuickPaymentModal({ entry, onClose }: QuickPaymentModalProps) {
     </div>
   );
 }
+
