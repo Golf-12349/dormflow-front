@@ -21,19 +21,13 @@ type SortDirection = "asc" | "desc";
 type SortState = { key: SortKey; direction: SortDirection } | null;
 type StatusFilter = TenantStatus | "all";
 
-/** What the profile drawer opens on: which tenant, plus "now" for 6.4. */
-type TenantSelection = { tenantId: string; nowMs: number };
+export type DrawerMode = "view" | "edit" | "assignRoom";
 
-/**
- * Builds that selection, sampling the clock at click time.
- *
- * The impure `Date.now()` call lives at module scope — the same trick
- * `formatRelativeTime` uses for `new Date()` (`lib/utils.ts`) — because
- * `react-hooks/purity` forbids reading the clock during component render,
- * while event handlers (which are where this runs) are allowed to be impure.
- */
-function openSelection(tenantId: string): TenantSelection {
-  return { tenantId, nowMs: Date.now() };
+/** What the profile drawer opens on: which tenant, plus "now" and mode. */
+type TenantSelection = { tenantId: string; nowMs: number; mode: DrawerMode };
+
+function openSelection(tenantId: string, mode: DrawerMode = "view"): TenantSelection {
+  return { tenantId, nowMs: Date.now(), mode };
 }
 
 /** Status filter order (drives the segmented control options). */
@@ -228,9 +222,9 @@ export function TenantTable({
     });
   }, [tenants, query, status, sort, roomOf]);
 
-  function openTenant(tenantId: string, trigger: HTMLElement) {
+  function openTenant(tenantId: string, trigger: HTMLElement, mode: DrawerMode = "view") {
     tenantTrigger.current = trigger;
-    setSelected(openSelection(tenantId));
+    setSelected(openSelection(tenantId, mode));
   }
 
   function closeTenant() {
@@ -440,7 +434,7 @@ export function TenantTable({
 
       {selected && selectedTenant ? (
         <TenantDetailDrawer
-          key={selectedTenant.id}
+          key={`${selectedTenant.id}-${selected.mode}`}
           tenant={selectedTenant}
           room={selectedRoom}
           rooms={rooms}
@@ -448,6 +442,7 @@ export function TenantTable({
           invoices={selectedInvoices}
           history={historiesByTenant[selectedTenant.id] ?? []}
           nowMs={selected.nowMs}
+          initialMode={selected.mode}
           onClose={closeTenant}
         />
       ) : null}

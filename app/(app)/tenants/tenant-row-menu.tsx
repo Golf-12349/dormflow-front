@@ -42,8 +42,12 @@ export function TenantRowMenu({
   onOpen,
 }: {
   tenant: Tenant;
-  /** Opens the 6.3 drawer; the kebab button is the focus-restore target. */
-  onOpen: (tenantId: string, trigger: HTMLElement) => void;
+  /** Opens the drawer with optional mode: 'view' | 'edit' | 'assignRoom'. */
+  onOpen: (
+    tenantId: string,
+    trigger: HTMLElement,
+    mode?: "view" | "edit" | "assignRoom",
+  ) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -226,18 +230,26 @@ export function TenantRowMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={viewProfile}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-indigo-600 group"
+                onClick={() => {
+                  setIsOpen(false);
+                  setConfirming(false);
+                  if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "edit");
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 group"
               >
-                <Pencil className="size-3.5 shrink-0 text-slate-400 group-hover:text-indigo-600" aria-hidden="true" />
-                <span>ເບິ່ງ / ແກ້ໄຂຂໍ້ມູນຜູ້ເຊົ່າ</span>
+                <Pencil className="size-3.5 shrink-0 text-indigo-600" aria-hidden="true" />
+                <span>ແກ້ໄຂຂໍ້ມູນຜູ້ເຊົ່າ (Edit Profile)</span>
               </button>
 
               {!tenant.roomId ? (
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={viewProfile}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setConfirming(false);
+                    if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "assignRoom");
+                  }}
                   className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 group"
                 >
                   <DoorOpen className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
@@ -248,7 +260,11 @@ export function TenantRowMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={viewProfile}
+                onClick={() => {
+                  setIsOpen(false);
+                  setConfirming(false);
+                  if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "view");
+                }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 group"
               >
                 <History className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />

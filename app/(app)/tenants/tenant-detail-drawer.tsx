@@ -14,6 +14,7 @@ import {
 import {
   assignTenantRoomAction,
   checkOutTenantAction,
+  updateTenantAction,
   updateTenantContactAction,
   updateTenantStatusAction,
 } from "@/lib/actions/tenants";
@@ -53,12 +54,8 @@ interface TenantDetailDrawerProps {
   history?: TenantLeaseHistoryItem[];
   /** Closes the drawer; the parent returns focus to the row that opened it. */
   onClose: () => void;
-  /**
-   * Wall-clock ms sampled by the row's click handler when the drawer opened
-   * (event handlers may be impure; render itself must stay pure — see the
-   * 6.4 computation below).
-   */
   nowMs: number;
+  initialMode?: "view" | "edit" | "assignRoom";
 }
 
 /** Derived 6.4 numbers: elapsed percent of the lease, days until it ends. */
@@ -117,15 +114,23 @@ export function TenantDetailDrawer({
   history = [],
   onClose,
   nowMs,
+  initialMode = "view",
 }: TenantDetailDrawerProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  /** 6.5 — the contact section flips into an inline edit form. */
-  const [isEditingContact, setIsEditingContact] = useState(false);
+  /** Contact / Profile section flips into an inline edit form. */
+  const [isEditingContact, setIsEditingContact] = useState(
+    initialMode === "edit",
+  );
   const [contactState, contactFormAction, contactPending] = useActionState(
-    updateTenantContactAction,
+    updateTenantAction,
     INITIAL_EDIT_CONTACT_STATE,
+  );
+
+  /** Check-in / Assign Room for tenants without an active room. */
+  const [isAssigningRoom, setIsAssigningRoom] = useState(
+    initialMode === "assignRoom",
   );
 
   /** 6.5 — destructive check-out: destructive button → confirmation step. */
@@ -133,8 +138,7 @@ export function TenantDetailDrawer({
   const [checkOutState, checkOutFormAction, checkOutPending] =
     useActionState(checkOutTenantAction, INITIAL_CHECK_OUT_STATE);
 
-  /** Check-in / Assign Room for tenants without an active room. */
-  const [isAssigningRoom, setIsAssigningRoom] = useState(false);
+
   const [assignState, assignFormAction, assignPending] = useActionState(
     assignTenantRoomAction,
     INITIAL_CHECK_OUT_STATE,
@@ -263,21 +267,49 @@ export function TenantDetailDrawer({
               >
                 <input type="hidden" name="tenantId" value={tenant.id} />
 
+                <div className="grid grid-cols-2 gap-2">
+                  <TenantFormField
+                    id="contact-first-name"
+                    name="firstName"
+                    label="ຊື່ (First Name) *"
+                    defaultValue={tenant.fullName.trim().split(/\s+/)[0] || ""}
+                    required
+                  />
+                  <TenantFormField
+                    id="contact-last-name"
+                    name="lastName"
+                    label="ນາມສະກຸນ (Last Name) *"
+                    defaultValue={tenant.fullName.trim().split(/\s+/).slice(1).join(" ") || "-"}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <TenantFormField
+                    id="contact-phone"
+                    name="phone"
+                    label={t.tenants.profile.fields.phone}
+                    type="tel"
+                    defaultValue={tenant.phone}
+                    autoComplete="tel"
+                  />
+                  <TenantFormField
+                    id="contact-email"
+                    name="email"
+                    label={t.tenants.profile.fields.email}
+                    type="email"
+                    defaultValue={tenant.email}
+                    autoComplete="email"
+                    required={false}
+                  />
+                </div>
+
                 <TenantFormField
-                  id="contact-email"
-                  name="email"
-                  label={t.tenants.profile.fields.email}
-                  type="email"
-                  defaultValue={tenant.email}
-                  autoComplete="email"
-                />
-                <TenantFormField
-                  id="contact-phone"
-                  name="phone"
-                  label={t.tenants.profile.fields.phone}
-                  type="tel"
-                  defaultValue={tenant.phone}
-                  autoComplete="tel"
+                  id="contact-id-card"
+                  name="idCard"
+                  label={t.tenants.profile.fields.idCard}
+                  defaultValue={tenant.idCard}
+                  required={false}
                 />
                 <TenantFormField
                   id="contact-dob"
@@ -298,19 +330,23 @@ export function TenantDetailDrawer({
                 <p className="pt-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                   {t.tenants.profile.sections.emergency}
                 </p>
-                <TenantFormField
-                  id="contact-ec-name"
-                  name="emergencyName"
-                  label={t.tenants.profile.fields.contactName}
-                  defaultValue={tenant.emergencyContact.name}
-                />
-                <TenantFormField
-                  id="contact-ec-phone"
-                  name="emergencyPhone"
-                  label={t.tenants.profile.fields.phone}
-                  type="tel"
-                  defaultValue={tenant.emergencyContact.phone}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <TenantFormField
+                    id="contact-ec-name"
+                    name="emergencyName"
+                    label={t.tenants.profile.fields.contactName}
+                    defaultValue={tenant.emergencyContact?.name ?? ""}
+                    required={false}
+                  />
+                  <TenantFormField
+                    id="contact-ec-phone"
+                    name="emergencyPhone"
+                    label={t.tenants.profile.fields.phone}
+                    type="tel"
+                    defaultValue={tenant.emergencyContact?.phone ?? ""}
+                    required={false}
+                  />
+                </div>
 
                 <div className="flex items-center justify-end gap-2 pt-1">
                   <button

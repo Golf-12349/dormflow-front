@@ -994,34 +994,71 @@ export async function createTenant(input: {
   }
 }
 
-export async function updateTenantContact(
+export async function updateTenant(
   tenantId: string,
-  contact: {
-    email: string;
-    phone: string;
+  data: {
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+    email?: string | null;
+    phone?: string | null;
+    nationalId?: string | null;
+    idCard?: string | null;
     dateOfBirth?: string | null;
     address?: string | null;
-    emergencyContact: EmergencyContact;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    status?: string | null;
   },
 ): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
   try {
     const existing = await apiRequest<ApiTenant>(
       `/tenants/${encodeURIComponent(tenantId)}`,
     );
+
+    let firstName = data.firstName?.trim() || "";
+    let lastName = data.lastName?.trim() || "";
+    if (!firstName && !lastName && data.fullName) {
+      const parts = data.fullName.trim().split(/\s+/u);
+      firstName = parts[0] ?? "";
+      lastName = parts.slice(1).join(" ") || "-";
+    }
+
+    if (!firstName) firstName = existing.firstName || "-";
+    if (!lastName) lastName = existing.lastName || "-";
+
     await apiRequest(`/tenants/${encodeURIComponent(tenantId)}`, {
       method: "PUT",
       body: {
-        firstName: existing.firstName || "-",
-        lastName: existing.lastName || "-",
-        email: contact.email,
-        phone: contact.phone,
-        nationalId: existing.nationalId,
-        dateOfBirth: contact.dateOfBirth ?? existing.dateOfBirth ?? null,
-        address: contact.address ?? existing.address ?? null,
-        emergencyContactName: contact.emergencyContact.name,
-        emergencyContactPhone: contact.emergencyContact.phone,
+        firstName,
+        lastName,
+        email: data.email !== undefined ? data.email : existing.email,
+        phone: data.phone !== undefined ? data.phone : existing.phone,
+        nationalId: data.nationalId ?? data.idCard ?? existing.nationalId,
+        dateOfBirth: data.dateOfBirth !== undefined ? data.dateOfBirth : existing.dateOfBirth,
+        address: data.address !== undefined ? data.address : existing.address,
+        emergencyContactName:
+          data.emergencyContactName !== undefined
+            ? data.emergencyContactName
+            : existing.emergencyContactName,
+        emergencyContactPhone:
+          data.emergencyContactPhone !== undefined
+            ? data.emergencyContactPhone
+            : existing.emergencyContactPhone,
       },
     });
+
+    if (data.status && data.status !== existing.status) {
+      try {
+        await apiRequest(`/tenants/${encodeURIComponent(tenantId)}/status`, {
+          method: "PATCH",
+          body: { status: data.status },
+        });
+      } catch {
+        // Status PATCH errors should not fail the whole update
+      }
+    }
+
     const tenant = await getTenantById(tenantId);
     if (!tenant) {
       return { success: false, error: "The tenant was updated but could not be reloaded." };
@@ -1033,6 +1070,26 @@ export async function updateTenantContact(
     }
     throw error;
   }
+}
+
+export async function updateTenantContact(
+  tenantId: string,
+  contact: {
+    email: string;
+    phone: string;
+    dateOfBirth?: string | null;
+    address?: string | null;
+    emergencyContact: EmergencyContact;
+  },
+): Promise<{ success: true; tenant: Tenant } | { success: false; error: string }> {
+  return updateTenant(tenantId, {
+    email: contact.email,
+    phone: contact.phone,
+    dateOfBirth: contact.dateOfBirth,
+    address: contact.address,
+    emergencyContactName: contact.emergencyContact.name,
+    emergencyContactPhone: contact.emergencyContact.phone,
+  });
 }
 
 export async function checkOutTenant(

@@ -20,6 +20,7 @@ import {
   createTenant,
   getRoomById,
   getTenantById,
+  updateTenant,
   updateTenantContact,
   updateTenantStatus,
 } from "@/lib/api/dormflow";
@@ -208,58 +209,55 @@ export async function createTenantAction(
  * 6.5 — "edit contact". Only email, phone and the emergency contact travel to
  * the server; the tenant is re-read from the data layer before the write.
  */
-export async function updateTenantContactAction(
+export async function updateTenantAction(
   _prevState: EditContactFormState,
   formData: FormData,
 ): Promise<EditContactFormState> {
   const tenantId = readField(formData, "tenantId");
+  let firstName = readField(formData, "firstName");
+  let lastName = readField(formData, "lastName");
+  const fullName = readField(formData, "fullName");
   const email = readField(formData, "email");
   const phone = readField(formData, "phone");
+  const idCard = readField(formData, "idCard") || readField(formData, "nationalId");
   const dateOfBirth = readField(formData, "dateOfBirth") || null;
   const address = readField(formData, "address") || null;
-  const emergencyName = readField(formData, "emergencyName");
-  const emergencyPhone = readField(formData, "emergencyPhone");
+  const emergencyName =
+    readField(formData, "emergencyName") ||
+    readField(formData, "emergencyContactName") ||
+    "-";
+  const emergencyPhone =
+    readField(formData, "emergencyPhone") ||
+    readField(formData, "emergencyContactPhone") ||
+    "-";
+  const status = readField(formData, "status") || null;
 
   if (!tenantId) {
     return { status: "error", message: t.tenants.errors.tenantIdRequired };
   }
-  if (!email) {
-    return { status: "error", message: t.tenants.errors.emailRequired };
+
+  if (!firstName && !lastName && fullName) {
+    const parts = fullName.split(/\s+/u);
+    firstName = parts[0] ?? "";
+    lastName = parts.slice(1).join(" ") || "-";
   }
-  if (!EMAIL_PATTERN.test(email)) {
+
+  if (email && !EMAIL_PATTERN.test(email)) {
     return { status: "error", message: t.tenants.errors.emailInvalid };
   }
-  if (!phone) {
-    return { status: "error", message: t.tenants.errors.phoneRequired };
-  }
-  if (!emergencyName) {
-    return {
-      status: "error",
-      message: t.tenants.errors.emergencyNameRequired,
-    };
-  }
-  if (!emergencyPhone) {
-    return {
-      status: "error",
-      message: t.tenants.errors.emergencyPhoneRequired,
-    };
-  }
 
-  // Never trust the client: re-read the tenant from the data layer.
-  const tenant = await getTenantById(tenantId);
-  if (!tenant) {
-    return { status: "error", message: t.tenants.errors.tenantNotFound };
-  }
-
-  const result = await updateTenantContact(tenantId, {
-    email,
-    phone,
+  const result = await updateTenant(tenantId, {
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
+    fullName: fullName || undefined,
+    email: email || null,
+    phone: phone || null,
+    nationalId: idCard || null,
     dateOfBirth,
     address,
-    emergencyContact: {
-      name: emergencyName,
-      phone: emergencyPhone,
-    },
+    emergencyContactName: emergencyName,
+    emergencyContactPhone: emergencyPhone,
+    status,
   });
 
   if (!result.success) {
@@ -268,11 +266,19 @@ export async function updateTenantContactAction(
 
   revalidatePath("/tenants");
   revalidatePath("/dashboard");
+  revalidatePath("/rooms");
 
   return {
     status: "success",
     message: t.tenants.editContact.success(result.tenant.fullName),
   };
+}
+
+export async function updateTenantContactAction(
+  _prevState: EditContactFormState,
+  formData: FormData,
+): Promise<EditContactFormState> {
+  return updateTenantAction(_prevState, formData);
 }
 
 /**
