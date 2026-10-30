@@ -519,11 +519,20 @@ function RoomTypeRow({ roomType }: { roomType: ApiRoomType }) {
   );
 }
 
-function MasterDataContent({ options }: { options: RoomCreationOptions }) {
+function MasterDataContent({
+  options,
+  initialTab,
+  hideTabs = false,
+}: {
+  options: RoomCreationOptions;
+  initialTab?: TabKey;
+  hideTabs?: boolean;
+}) {
   const dormitories = options.dormitories ?? [];
   const { buildings, floors, roomTypes } = options;
 
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    if (initialTab) return initialTab;
     if (dormitories.length === 0) return "dormitories";
     if (buildings.length === 0) return "buildings";
     if (floors.length === 0) return "floors";
@@ -597,46 +606,48 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
       <ActionResultToast state={roomTypeState} />
 
       {/* Step / Tab Bar */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition",
-                active
-                  ? "border-indigo-600 bg-indigo-50/80 text-indigo-900 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
-              )}
-            >
-              <span className="inline-flex items-center gap-2 truncate">
-                <Icon
-                  className={cn(
-                    "size-4 shrink-0",
-                    active ? "text-indigo-600" : "text-slate-400",
-                  )}
-                  aria-hidden="true"
-                />
-                <span className="truncate">{tab.label}</span>
-              </span>
-              <span
+      {!hideTabs ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-semibold",
+                  "flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition",
                   active
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 text-slate-700",
+                    ? "border-indigo-600 bg-indigo-50/80 text-indigo-900 shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
                 )}
               >
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <span className="inline-flex items-center gap-2 truncate">
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      active ? "text-indigo-600" : "text-slate-400",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{tab.label}</span>
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    active
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-100 text-slate-700",
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* 1. DORMITORIES TAB */}
       {activeTab === "dormitories" ? (
@@ -1200,9 +1211,13 @@ function MasterDataContent({ options }: { options: RoomCreationOptions }) {
 export function MasterDataManager({
   options,
   embedded = false,
+  initialTab,
+  hideTabs = false,
 }: {
   options: RoomCreationOptions;
   embedded?: boolean;
+  initialTab?: TabKey;
+  hideTabs?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
@@ -1226,13 +1241,19 @@ export function MasterDataManager({
   if (embedded) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <header className="mb-5 space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">
-            {t.masterData.title}
-          </h3>
-          <p className="text-sm text-slate-500">{t.masterData.subtitle}</p>
-        </header>
-        <MasterDataContent options={options} />
+        {!hideTabs ? (
+          <header className="mb-5 space-y-1">
+            <h3 className="text-lg font-semibold text-slate-900">
+              {t.masterData.title}
+            </h3>
+            <p className="text-sm text-slate-500">{t.masterData.subtitle}</p>
+          </header>
+        ) : null}
+        <MasterDataContent
+          options={options}
+          initialTab={initialTab}
+          hideTabs={hideTabs}
+        />
       </section>
     );
   }

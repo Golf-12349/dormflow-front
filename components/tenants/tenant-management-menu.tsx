@@ -113,7 +113,7 @@ export function TenantManagementMenu() {
 
             {/* Master Data */}
             <Link
-              href="/master-data"
+              href="/master-data/dormitories"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition hover:bg-slate-50 group"
             >
