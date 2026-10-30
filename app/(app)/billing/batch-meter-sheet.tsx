@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { batchSaveMeterReadingsAction, type BatchMeterEntryItem } from "@/lib/actions/billing";
 import { t } from "@/lib/i18n";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { MeterRoom } from "./meter-entry";
+import type { MeterRoom, UtilityTypeTab } from "./meter-entry";
 
 interface BatchMeterSheetProps {
   rooms: MeterRoom[];
@@ -15,6 +15,7 @@ interface BatchMeterSheetProps {
   periodLabel: string;
   canRecord: boolean;
   rates: { electricPerKwh: number; waterPerCubicMeter: number };
+  utilityTab?: UtilityTypeTab;
 }
 
 interface RowState {
@@ -28,12 +29,16 @@ export function BatchMeterSheet({
   periodLabel,
   canRecord,
   rates,
+  utilityTab = "all",
 }: BatchMeterSheetProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedFloor, setSelectedFloor] = useState<number | "all">("all");
   const [batchErrors, setBatchErrors] = useState<string[]>([]);
   const [batchSuccess, setBatchSuccess] = useState<string | null>(null);
+
+  const showElectric = utilityTab === "electric" || utilityTab === "all";
+  const showWater = utilityTab === "water" || utilityTab === "all";
 
   // Extract floors
   const floors = useMemo(() => {
@@ -258,12 +263,20 @@ export function BatchMeterSheet({
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
             <tr>
               <th scope="col" className="px-4 py-3">ຫ້ອງ</th>
-              <th scope="col" className="px-4 py-3">ໄຟຟ້າເກົ່າ</th>
-              <th scope="col" className="px-4 py-3 min-w-[8rem]">ໄຟຟ້າໃໝ່</th>
-              <th scope="col" className="px-4 py-3">ໜ່ວຍໄຟ</th>
-              <th scope="col" className="px-4 py-3">ນ້ຳເກົ່າ</th>
-              <th scope="col" className="px-4 py-3 min-w-[8rem]">ນ້ຳໃໝ່</th>
-              <th scope="col" className="px-4 py-3">ໜ່ວຍນ້ຳ</th>
+              {showElectric ? (
+                <>
+                  <th scope="col" className="px-4 py-3 text-amber-900 bg-amber-50/50">ໄຟຟ້າເກົ່າ</th>
+                  <th scope="col" className="px-4 py-3 min-w-[8rem] text-amber-900 bg-amber-50/50">ໄຟຟ້າໃໝ່</th>
+                  <th scope="col" className="px-4 py-3 text-amber-900 bg-amber-50/50">ໜ່ວຍໄຟ</th>
+                </>
+              ) : null}
+              {showWater ? (
+                <>
+                  <th scope="col" className="px-4 py-3 text-sky-900 bg-sky-50/50">ນ້ຳເກົ່າ</th>
+                  <th scope="col" className="px-4 py-3 min-w-[8rem] text-sky-900 bg-sky-50/50">ນ້ຳໃໝ່</th>
+                  <th scope="col" className="px-4 py-3 text-sky-900 bg-sky-50/50">ໜ່ວຍນ້ຳ</th>
+                </>
+              ) : null}
               <th scope="col" className="px-4 py-3 text-right">ປະມານການຄ່າໃຊ້ຈ່າຍ</th>
               <th scope="col" className="px-4 py-3 text-center">ສະຖານະ</th>
               <th scope="col" className="px-4 py-3 text-right">ຈັດການ</th>
@@ -329,95 +342,103 @@ export function BatchMeterSheet({
                     <div className="text-xs text-slate-400">ຊັ້ນ {room.floor}</div>
                   </td>
 
-                  {/* Electric Previous */}
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
-                    {prevE.toLocaleString()}
-                  </td>
+                  {showElectric ? (
+                    <>
+                      {/* Electric Previous */}
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500 bg-amber-50/20">
+                        {prevE.toLocaleString()}
+                      </td>
 
-                  {/* Electric Current Input */}
-                  <td className="whitespace-nowrap px-4 py-2.5">
-                    {isRecorded ? (
-                      <span className="font-mono text-xs font-semibold text-slate-800">
-                        {kind.reading.electricCurrent.toLocaleString()}
-                      </span>
-                    ) : isBlocked ? (
-                      <span className="text-xs text-slate-400">—</span>
-                    ) : (
-                      <input
-                        type="number"
-                        min={prevE}
-                        step="any"
-                        disabled={!canRecord || isPending}
-                        value={currentInputs.electricCurrent}
-                        onChange={(e) =>
-                          handleInputChange(room.id, "electricCurrent", e.target.value)
-                        }
-                        placeholder={`>= ${prevE}`}
-                        className={cn(
-                          "w-28 rounded-lg border px-2.5 py-1.5 font-mono text-xs text-slate-900 shadow-sm outline-none transition",
-                          unitsE === null && currentInputs.electricCurrent !== ""
-                            ? "border-rose-400 bg-rose-50"
-                            : "border-slate-200 bg-white focus:border-indigo-500",
+                      {/* Electric Current Input */}
+                      <td className="whitespace-nowrap px-4 py-2.5 bg-amber-50/20">
+                        {isRecorded ? (
+                          <span className="font-mono text-xs font-semibold text-slate-800">
+                            {kind.reading.electricCurrent.toLocaleString()}
+                          </span>
+                        ) : isBlocked ? (
+                          <span className="text-xs text-slate-400">—</span>
+                        ) : (
+                          <input
+                            type="number"
+                            min={prevE}
+                            step="any"
+                            disabled={!canRecord || isPending}
+                            value={currentInputs.electricCurrent}
+                            onChange={(e) =>
+                              handleInputChange(room.id, "electricCurrent", e.target.value)
+                            }
+                            placeholder={`>= ${prevE}`}
+                            className={cn(
+                              "w-28 rounded-lg border px-2.5 py-1.5 font-mono text-xs text-slate-900 shadow-sm outline-none transition",
+                              unitsE === null && currentInputs.electricCurrent !== ""
+                                ? "border-rose-400 bg-rose-50"
+                                : "border-slate-200 bg-white focus:border-indigo-500",
+                            )}
+                          />
                         )}
-                      />
-                    )}
-                  </td>
+                      </td>
 
-                  {/* Electric Units Used */}
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
-                    {unitsE !== null ? (
-                      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">
-                        +{unitsE.toLocaleString()} kWh
-                      </span>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </td>
-
-                  {/* Water Previous */}
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">
-                    {prevW.toLocaleString()}
-                  </td>
-
-                  {/* Water Current Input */}
-                  <td className="whitespace-nowrap px-4 py-2.5">
-                    {isRecorded ? (
-                      <span className="font-mono text-xs font-semibold text-slate-800">
-                        {kind.reading.waterCurrent.toLocaleString()}
-                      </span>
-                    ) : isBlocked ? (
-                      <span className="text-xs text-slate-400">—</span>
-                    ) : (
-                      <input
-                        type="number"
-                        min={prevW}
-                        step="any"
-                        disabled={!canRecord || isPending}
-                        value={currentInputs.waterCurrent}
-                        onChange={(e) =>
-                          handleInputChange(room.id, "waterCurrent", e.target.value)
-                        }
-                        placeholder={`>= ${prevW}`}
-                        className={cn(
-                          "w-28 rounded-lg border px-2.5 py-1.5 font-mono text-xs text-slate-900 shadow-sm outline-none transition",
-                          unitsW === null && currentInputs.waterCurrent !== ""
-                            ? "border-rose-400 bg-rose-50"
-                            : "border-slate-200 bg-white focus:border-indigo-500",
+                      {/* Electric Units Used */}
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs bg-amber-50/20">
+                        {unitsE !== null ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
+                            +{unitsE.toLocaleString()} kWh
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
                         )}
-                      />
-                    )}
-                  </td>
+                      </td>
+                    </>
+                  ) : null}
 
-                  {/* Water Units Used */}
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
-                    {unitsW !== null ? (
-                      <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 font-semibold text-sky-700">
-                        +{unitsW.toLocaleString()} m³
-                      </span>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </td>
+                  {showWater ? (
+                    <>
+                      {/* Water Previous */}
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500 bg-sky-50/20">
+                        {prevW.toLocaleString()}
+                      </td>
+
+                      {/* Water Current Input */}
+                      <td className="whitespace-nowrap px-4 py-2.5 bg-sky-50/20">
+                        {isRecorded ? (
+                          <span className="font-mono text-xs font-semibold text-slate-800">
+                            {kind.reading.waterCurrent.toLocaleString()}
+                          </span>
+                        ) : isBlocked ? (
+                          <span className="text-xs text-slate-400">—</span>
+                        ) : (
+                          <input
+                            type="number"
+                            min={prevW}
+                            step="any"
+                            disabled={!canRecord || isPending}
+                            value={currentInputs.waterCurrent}
+                            onChange={(e) =>
+                              handleInputChange(room.id, "waterCurrent", e.target.value)
+                            }
+                            placeholder={`>= ${prevW}`}
+                            className={cn(
+                              "w-28 rounded-lg border px-2.5 py-1.5 font-mono text-xs text-slate-900 shadow-sm outline-none transition",
+                              unitsW === null && currentInputs.waterCurrent !== ""
+                                ? "border-rose-400 bg-rose-50"
+                                : "border-slate-200 bg-white focus:border-indigo-500",
+                            )}
+                          />
+                        )}
+                      </td>
+
+                      {/* Water Units Used */}
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs bg-sky-50/20">
+                        {unitsW !== null ? (
+                          <span className="inline-flex items-center rounded-md bg-sky-100 px-2 py-0.5 font-semibold text-sky-800">
+                            +{unitsW.toLocaleString()} m³
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                    </>
+                  ) : null}
 
                   {/* Estimated Cost */}
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-800">

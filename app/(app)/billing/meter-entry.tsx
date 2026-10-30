@@ -1,7 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertCircle, CheckCircle2, LayoutGrid, Loader2, TableProperties } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Droplets,
+  Layers,
+  LayoutGrid,
+  Loader2,
+  TableProperties,
+  Zap,
+} from "lucide-react";
 
 import { saveMeterReadingAction } from "@/lib/actions/billing";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -9,6 +18,8 @@ import { t } from "@/lib/i18n";
 import { cn, formatUnitPrice } from "@/lib/utils";
 import type { MeterReadingFormState, Room, UtilityReading } from "@/types";
 import { BatchMeterSheet } from "./batch-meter-sheet";
+
+export type UtilityTypeTab = "electric" | "water" | "all";
 
 export type MeterRoomKind =
   | { kind: "recorded"; reading: UtilityReading }
@@ -57,6 +68,7 @@ export function MeterEntry({
   rates,
 }: MeterEntryProps) {
   const [viewMode, setViewMode] = useState<"sheet" | "cards">("sheet");
+  const [utilityTab, setUtilityTab] = useState<UtilityTypeTab>("electric");
   const done = rooms.filter((entry) => entry.kind.kind === "recorded").length;
 
   return (
@@ -112,6 +124,90 @@ export function MeterEntry({
           </div>
         </div>
       </div>
+
+      {/* Utility Pill Tabs Bar (EDL-DMS reference style) */}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setUtilityTab("electric")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
+            utilityTab === "electric"
+              ? "border border-amber-300 bg-amber-50/80 text-amber-900 shadow-xs"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+          )}
+        >
+          <Zap
+            className={cn(
+              "size-4",
+              utilityTab === "electric"
+                ? "fill-amber-500 text-amber-600"
+                : "text-slate-400",
+            )}
+          />
+          <span>1. ມິເຕີໄຟຟ້າ (Electricity)</span>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-bold",
+              utilityTab === "electric"
+                ? "bg-amber-100 text-amber-800"
+                : "bg-slate-100 text-slate-500",
+            )}
+          >
+            {rooms.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setUtilityTab("water")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
+            utilityTab === "water"
+              ? "border border-sky-300 bg-sky-50/80 text-sky-900 shadow-xs"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+          )}
+        >
+          <Droplets
+            className={cn(
+              "size-4",
+              utilityTab === "water"
+                ? "fill-sky-500 text-sky-600"
+                : "text-slate-400",
+            )}
+          />
+          <span>2. ມິເຕີນ້ຳປະປາ (Water)</span>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-bold",
+              utilityTab === "water"
+                ? "bg-sky-100 text-sky-800"
+                : "bg-slate-100 text-slate-500",
+            )}
+          >
+            {rooms.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setUtilityTab("all")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
+            utilityTab === "all"
+              ? "border border-indigo-300 bg-indigo-50/80 text-indigo-900 shadow-xs"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+          )}
+        >
+          <Layers
+            className={cn(
+              "size-4",
+              utilityTab === "all" ? "text-indigo-600" : "text-slate-400",
+            )}
+          />
+          <span>3. ລວມທັງໝົດ (All in One)</span>
+        </button>
+      </div>
       {rooms.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
           {t.billing.meter.empty}
@@ -130,6 +226,7 @@ export function MeterEntry({
           periodLabel={periodLabel}
           canRecord={canRecord}
           rates={rates}
+          utilityTab={utilityTab}
         />
       ) : (
         <div className="grid gap-3">
@@ -140,6 +237,7 @@ export function MeterEntry({
               kind={entry.kind}
               period={period}
               rates={rates}
+              utilityTab={utilityTab}
             />
           ))}
         </div>
@@ -159,11 +257,13 @@ function MeterRow({
   kind,
   period,
   rates,
+  utilityTab = "all",
 }: {
   room: Room;
   kind: MeterRoomKind;
   period: string;
   rates: Rates;
+  utilityTab?: UtilityTypeTab;
 }) {
   const [state, formAction, isPending] = useActionState(
     saveMeterReadingAction,
@@ -221,7 +321,7 @@ function MeterRow({
       ) : null}
 
       {kind.kind === "recorded" ? (
-        <RecordedBody reading={kind.reading} />
+        <RecordedBody reading={kind.reading} utilityTab={utilityTab} />
       ) : kind.kind === "blocked" ? (
         <p className="mt-3 text-sm text-slate-500">
           {t.billing.meter.errors.laterExists}
@@ -232,6 +332,7 @@ function MeterRow({
           roomLabel={roomLabel}
           period={period}
           rates={rates}
+          utilityTab={utilityTab}
           previous={kind.previous}
           state={state}
           formAction={formAction}
@@ -251,47 +352,63 @@ function MeterRow({
 }
 
 /** Read-only previous \u2192 current, usage and cost at the stored rate. */
-function RecordedBody({ reading }: { reading: UtilityReading }) {
+function RecordedBody({
+  reading,
+  utilityTab = "all",
+}: {
+  reading: UtilityReading;
+  utilityTab?: UtilityTypeTab;
+}) {
   const electricUsage = reading.electricCurrent - reading.electricPrevious;
   const waterUsage = reading.waterCurrent - reading.waterPrevious;
+  const showElectric = utilityTab === "electric" || utilityTab === "all";
+  const showWater = utilityTab === "water" || utilityTab === "all";
+
   return (
-    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-      <fieldset className="rounded-xl border border-slate-200 p-3">
-        <legend className="px-1 text-xs font-semibold text-slate-500">
-          {t.billing.meter.electric} (kWh)
-        </legend>
-        <div className="space-y-1 text-sm text-slate-600">
-          <p>
-            {t.billing.meter.previous}: {reading.electricPrevious} →{" "}
-            {t.billing.meter.current}: {reading.electricCurrent}
-          </p>
-          <p>
-            {t.billing.meter.usage}: {electricUsage} kWh
-          </p>
-          <p>
-            {t.billing.meter.estimatedCost}:{" "}
-            {formatUnitPrice(electricUsage * reading.electricRate)}
-          </p>
-        </div>
-      </fieldset>
-      <fieldset className="rounded-xl border border-slate-200 p-3">
-        <legend className="px-1 text-xs font-semibold text-slate-500">
-          {t.billing.meter.water} (m³)
-        </legend>
-        <div className="space-y-1 text-sm text-slate-600">
-          <p>
-            {t.billing.meter.previous}: {reading.waterPrevious} →{" "}
-            {t.billing.meter.current}: {reading.waterCurrent}
-          </p>
-          <p>
-            {t.billing.meter.usage}: {waterUsage} m³
-          </p>
-          <p>
-            {t.billing.meter.estimatedCost}:{" "}
-            {formatUnitPrice(waterUsage * reading.waterRate)}
-          </p>
-        </div>
-      </fieldset>
+    <div className={cn("mt-3 grid gap-3", utilityTab === "all" ? "sm:grid-cols-2" : "grid-cols-1")}>
+      {showElectric ? (
+        <fieldset className="rounded-xl border border-amber-200/80 bg-amber-50/20 p-3">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-semibold text-amber-800">
+            <Zap className="size-3.5 fill-amber-500 text-amber-600" />
+            <span>{t.billing.meter.electric} (kWh)</span>
+          </legend>
+          <div className="space-y-1 text-sm text-slate-600">
+            <p>
+              {t.billing.meter.previous}: {reading.electricPrevious} →{" "}
+              {reading.electricCurrent}
+            </p>
+            <p>
+              {t.billing.meter.usage}: {electricUsage} kWh
+            </p>
+            <p className="font-semibold text-amber-900">
+              {t.billing.meter.estimatedCost}:{" "}
+              {formatUnitPrice(electricUsage * reading.electricRate)}
+            </p>
+          </div>
+        </fieldset>
+      ) : null}
+
+      {showWater ? (
+        <fieldset className="rounded-xl border border-sky-200/80 bg-sky-50/20 p-3">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-semibold text-sky-800">
+            <Droplets className="size-3.5 fill-sky-500 text-sky-600" />
+            <span>{t.billing.meter.water} (m³)</span>
+          </legend>
+          <div className="space-y-1 text-sm text-slate-600">
+            <p>
+              {t.billing.meter.previous}: {reading.waterPrevious} →{" "}
+              {reading.waterCurrent}
+            </p>
+            <p>
+              {t.billing.meter.usage}: {waterUsage} m³
+            </p>
+            <p className="font-semibold text-sky-900">
+              {t.billing.meter.estimatedCost}:{" "}
+              {formatUnitPrice(waterUsage * reading.waterRate)}
+            </p>
+          </div>
+        </fieldset>
+      ) : null}
     </div>
   );
 }
@@ -307,6 +424,7 @@ function EditableForm({
   roomLabel,
   period,
   rates,
+  utilityTab = "all",
   previous,
   state,
   formAction,
@@ -324,6 +442,7 @@ function EditableForm({
   roomLabel: string;
   period: string;
   rates: Rates;
+  utilityTab?: UtilityTypeTab;
   previous: Previous;
   state: MeterReadingFormState;
   formAction: (payload: FormData) => void;
@@ -355,21 +474,52 @@ function EditableForm({
           <input type="hidden" name="waterPrevious" value={String(previous.water)} />
         </>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MeterFieldset unit="kWh" kind="electric" roomId={roomId} roomLabel={roomLabel}
-          previous={hasPrevious ? previous.electric : null}
-          previousInput={electricPrevious} setPreviousInput={setElectricPrevious}
-          currentInput={electricCurrent} setCurrentInput={setElectricCurrent}
-          fieldErrorPrevious={state.fieldErrors?.electricPrevious}
-          fieldErrorCurrent={state.fieldErrors?.electricCurrent}
-          usage={eUsage} rate={rates.electricPerKwh} />
-        <MeterFieldset unit="m³" kind="water" roomId={roomId} roomLabel={roomLabel}
-          previous={hasPrevious ? previous.water : null}
-          previousInput={waterPrevious} setPreviousInput={setWaterPrevious}
-          currentInput={waterCurrent} setCurrentInput={setWaterCurrent}
-          fieldErrorPrevious={state.fieldErrors?.waterPrevious}
-          fieldErrorCurrent={state.fieldErrors?.waterCurrent}
-          usage={wUsage} rate={rates.waterPerCubicMeter} />
+      <div className={cn("grid gap-3", utilityTab === "all" ? "sm:grid-cols-2" : "grid-cols-1")}>
+        {utilityTab === "electric" || utilityTab === "all" ? (
+          <MeterFieldset
+            unit="kWh"
+            kind="electric"
+            roomId={roomId}
+            roomLabel={roomLabel}
+            previous={hasPrevious ? previous.electric : null}
+            previousInput={electricPrevious}
+            setPreviousInput={setElectricPrevious}
+            currentInput={electricCurrent}
+            setCurrentInput={setElectricCurrent}
+            fieldErrorPrevious={state.fieldErrors?.electricPrevious}
+            fieldErrorCurrent={state.fieldErrors?.electricCurrent}
+            usage={eUsage}
+            rate={rates.electricPerKwh}
+          />
+        ) : (
+          <>
+            <input type="hidden" name="electricPrevious" value={String(ePrev ?? 0)} />
+            <input type="hidden" name="electricCurrent" value={electricCurrent || String(ePrev ?? 0)} />
+          </>
+        )}
+
+        {utilityTab === "water" || utilityTab === "all" ? (
+          <MeterFieldset
+            unit="m³"
+            kind="water"
+            roomId={roomId}
+            roomLabel={roomLabel}
+            previous={hasPrevious ? previous.water : null}
+            previousInput={waterPrevious}
+            setPreviousInput={setWaterPrevious}
+            currentInput={waterCurrent}
+            setCurrentInput={setWaterCurrent}
+            fieldErrorPrevious={state.fieldErrors?.waterPrevious}
+            fieldErrorCurrent={state.fieldErrors?.waterCurrent}
+            usage={wUsage}
+            rate={rates.waterPerCubicMeter}
+          />
+        ) : (
+          <>
+            <input type="hidden" name="waterPrevious" value={String(wPrev ?? 0)} />
+            <input type="hidden" name="waterCurrent" value={waterCurrent || String(wPrev ?? 0)} />
+          </>
+        )}
       </div>
       {hasPrevious ? null : (
         <p className="text-sm text-slate-500">{t.billing.meter.firstReadingHint}</p>

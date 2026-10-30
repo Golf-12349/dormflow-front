@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Droplets, Loader2, Zap } from "lucide-react";
 
 import { updateUtilityRatesAction } from "@/lib/actions/billing";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -114,13 +114,33 @@ function RateField({
   rate: number;
   error?: string;
 }) {
+  const isElectric = name === "electricPerKwh";
   const id = `utility-rate-${name}`;
 
   return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">
-        {label} ({unit})
-      </label>
+    <div
+      className={cn(
+        "rounded-2xl border p-4 transition-all",
+        isElectric ? "border-amber-200/80 bg-amber-50/30" : "border-sky-200/80 bg-sky-50/30",
+      )}
+    >
+      <div className="mb-2.5 flex items-center gap-2">
+        <div
+          className={cn(
+            "flex size-7 items-center justify-center rounded-lg shadow-2xs",
+            isElectric ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700",
+          )}
+        >
+          {isElectric ? (
+            <Zap className="size-4 fill-amber-500 text-amber-600" />
+          ) : (
+            <Droplets className="size-4 fill-sky-500 text-sky-600" />
+          )}
+        </div>
+        <label htmlFor={id} className="block text-sm font-semibold text-slate-800">
+          {label} ({unit})
+        </label>
+      </div>
       <input
         id={id}
         name={name}
