@@ -135,18 +135,8 @@ export async function createTenantAction(
   if (!idCard) {
     return { status: "error", message: t.tenants.errors.idCardRequired };
   }
-  if (!emergencyName) {
-    return {
-      status: "error",
-      message: t.tenants.errors.emergencyNameRequired,
-    };
-  }
-  if (!emergencyPhone) {
-    return {
-      status: "error",
-      message: t.tenants.errors.emergencyPhoneRequired,
-    };
-  }
+// Emergency contact is optional
+
 
   // Never trust the client: re-read the chosen room from the data layer.
   if (roomId) {

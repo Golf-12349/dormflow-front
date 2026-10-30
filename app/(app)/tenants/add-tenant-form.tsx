@@ -219,12 +219,14 @@ export function AddTenantForm({
                     id="add-ec-name"
                     name="emergencyName"
                     label={t.tenants.profile.fields.contactName}
+                    required={false}
                   />
                   <TenantFormField
                     id="add-ec-phone"
                     name="emergencyPhone"
                     label={t.tenants.profile.fields.phone}
                     type="tel"
+                    required={false}
                   />
                 </div>
               </fieldset>
