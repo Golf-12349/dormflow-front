@@ -245,22 +245,22 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        label: "ຕັ້ງຄ່າ ແລະ ຜູ້ດູແລລະບົບ",
+        label: "ຈັດການຜູ້ໃຊ້ງານ",
+        href: "/management/administration/users",
+        icon: UserRound,
+        description: "ຈັດການບັນຊີຜູ້ໃຊ້ ແລະ ພະນັກງານ",
+      },
+      {
+        label: "ຕັ້ງຄ່າລະບົບ",
         href: "/settings",
         icon: Settings2,
-        description: "ຕັ້ງຄ່າລະບົບ, ຜູ້ໃຊ້ງານ ແລະ ບັນທຶກການໃຊ້ງານ",
+        description: "ຕັ້ງຄ່າລະບົບ, ບົດບາດ ແລະ ບັນທຶກການໃຊ້ງານ",
         children: [
           {
             label: "ຕັ້ງຄ່າທົ່ວໄປ",
             href: "/settings",
             icon: Settings,
             description: t.nav.settingsDescription,
-          },
-          {
-            label: "ຜູ້ໃຊ້ລະບົບ",
-            href: "/management/administration/users",
-            icon: UserRound,
-            description: "ຈັດການບັນຊີຜູ້ໃຊ້ ແລະ ພະນັກງານ",
           },
           {
             label: "ບົດບາດ ແລະ ສິດ",

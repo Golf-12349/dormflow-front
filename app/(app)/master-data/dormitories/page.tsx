@@ -30,3 +30,4 @@ export default async function MasterDormitoriesPage() {
     </div>
   );
 }
+
