@@ -100,38 +100,6 @@ export const NAV_SECTIONS: NavSection[] = [
           },
         ],
       },
-      {
-        label: "ຂໍ້ມູນພື້ນຖານ",
-        href: "/master-data/dormitories",
-        icon: Database,
-        description: "ກຳນົດໂຄງສ້າງຫໍພັກ, ອາຄານ, ຊັ້ນ ແລະ ປະເພດຫ້ອງພັກ",
-        children: [
-          {
-            label: "ຈັດການຫໍພັກ",
-            href: "/master-data/dormitories",
-            icon: Home,
-            description: "ຈັດການຂໍ້ມູນຫໍພັກ ແລະ ອັດຕາຄ່ານ້ຳ-ໄຟ",
-          },
-          {
-            label: "ຈັດການອາຄານ",
-            href: "/master-data/buildings",
-            icon: Building2,
-            description: "ຈັດການອາຄານພາຍໃນຫໍພັກ",
-          },
-          {
-            label: "ຈັດການຊັ້ນ",
-            href: "/master-data/floors",
-            icon: Layers,
-            description: "ຈັດການຊັ້ນ ແລະ ອາຄານທີ່ສັງກັດ",
-          },
-          {
-            label: "ຈັດການປະເພດຫ້ອງ",
-            href: "/master-data/room-types",
-            icon: BedDouble,
-            description: "ຈັດການປະເພດຫ້ອງ ແລະ ລາຄາຄ່າເຊົ່າ",
-          },
-        ],
-      },
     ],
   },
   {
@@ -244,6 +212,38 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "ຕັ້ງຄ່າ ແລະ ລະບົບ",
     items: [
+      {
+        label: "ຈັດການຂໍ້ມູນພື້ນຖານ",
+        href: "/master-data/dormitories",
+        icon: Database,
+        description: "ກຳນົດໂຄງສ້າງຫໍພັກ, ອາຄານ, ຊັ້ນ ແລະ ປະເພດຫ້ອງພັກ",
+        children: [
+          {
+            label: "ຈັດການຫໍພັກ",
+            href: "/master-data/dormitories",
+            icon: Home,
+            description: "ຈັດການຂໍ້ມູນຫໍພັກ ແລະ ອັດຕາຄ່ານ້ຳ-ໄຟ",
+          },
+          {
+            label: "ຈັດການອາຄານ",
+            href: "/master-data/buildings",
+            icon: Building2,
+            description: "ຈັດການອາຄານພາຍໃນຫໍພັກ",
+          },
+          {
+            label: "ຈັດການຊັ້ນ",
+            href: "/master-data/floors",
+            icon: Layers,
+            description: "ຈັດການຊັ້ນ ແລະ ອາຄານທີ່ສັງກັດ",
+          },
+          {
+            label: "ຈັດການປະເພດຫ້ອງ",
+            href: "/master-data/room-types",
+            icon: BedDouble,
+            description: "ຈັດການປະເພດຫ້ອງ ແລະ ລາຄາຄ່າເຊົ່າ",
+          },
+        ],
+      },
       {
         label: "ຕັ້ງຄ່າ ແລະ ຜູ້ດູແລລະບົບ",
         href: "/settings",
