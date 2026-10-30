@@ -35,10 +35,8 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
   const instanceId = useId();
-  const [expansionOverride, setExpansionOverride] = useState<{
-    pathname: string;
-    expanded: boolean;
-  } | null>(null);
+  // Store expanded state per item href so opening one dropdown never affects others
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
   function renderItem(item: NavItem) {
     const Icon = item.icon;
@@ -67,10 +65,8 @@ export function SidebarNav({
       );
     }
 
-    const expanded =
-      childActive ||
-      (expansionOverride?.pathname === pathname &&
-        expansionOverride.expanded);
+    const isExplicit = openItems[item.href] !== undefined;
+    const expanded = isExplicit ? openItems[item.href] : childActive;
     const submenuId = `${instanceId}-${item.href.replace(/[^a-z0-9]/giu, "-")}`;
 
     return (
@@ -87,9 +83,14 @@ export function SidebarNav({
             type="button"
             aria-expanded={expanded}
             aria-controls={submenuId}
-            onClick={() =>
-              setExpansionOverride({ pathname, expanded: !expanded })
-            }
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpenItems((prev) => ({
+                ...prev,
+                [item.href]: !expanded,
+              }));
+            }}
             className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left"
           >
             <Icon className="size-4 shrink-0" />
