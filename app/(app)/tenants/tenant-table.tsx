@@ -352,8 +352,8 @@ export function TenantTable({
                   <th scope="col" className="px-5 py-3">
                     {t.tenants.fields.status}
                   </th>
-                  <th scope="col" className="px-3 py-3 text-right">
-                    <span className="sr-only">{t.tenants.rowMenu.actions}</span>
+                  <th scope="col" className="px-5 py-3 text-right">
+                    <span>ຈັດການ</span>
                   </th>
                 </tr>
               </thead>
@@ -427,7 +427,7 @@ export function TenantTable({
                         {TENANT_STATUS_LABELS[tenant.status]}
                       </span>
                     </td>
-                    <td className="px-3 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <TenantRowMenu tenant={tenant} onOpen={openTenant} />
                     </td>
                   </tr>

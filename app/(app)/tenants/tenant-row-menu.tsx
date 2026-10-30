@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useActionState, useRef, useState } from "react";
-import { CheckCircle2, Loader2, LogOut, MoreVertical, User } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  DoorOpen,
+  History,
+  Loader2,
+  LogOut,
+  Pencil,
+  User,
+} from "lucide-react";
 
 import { checkOutTenantAction } from "@/lib/actions/tenants";
 import { ActionResultToast } from "@/components/providers/action-result-toast";
@@ -132,9 +141,18 @@ export function TenantRowMenu({
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={t.tenants.rowMenu.triggerLabel(tenant.fullName)}
-        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 focus:outline-hidden",
+          isOpen && "border-indigo-300 ring-2 ring-indigo-500/10",
+        )}
       >
-        <MoreVertical className="size-4" aria-hidden="true" />
+        <span>ຈັດການ</span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 text-slate-400 transition-transform duration-200",
+            isOpen && "rotate-180 text-slate-700",
+          )}
+        />
       </button>
 
       {isOpen ? (
@@ -142,7 +160,7 @@ export function TenantRowMenu({
           role="menu"
           aria-label={t.tenants.rowMenu.triggerLabel(tenant.fullName)}
           style={{ top: anchor?.top, left: anchor?.left }}
-          className="fixed z-50 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+          className="fixed z-50 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-slate-900/5 animate-in fade-in-0 zoom-in-95 duration-100"
         >
           {confirming ? (
             <form action={formAction} className="space-y-2.5 p-2.5">
@@ -204,29 +222,54 @@ export function TenantRowMenu({
               ) : null}
             </form>
           ) : (
-            <>
+            <div className="space-y-1">
               <button
                 type="button"
                 role="menuitem"
                 onClick={viewProfile}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-indigo-600 group"
               >
-                <User className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
-                {t.tenants.rowMenu.viewProfile}
+                <Pencil className="size-3.5 shrink-0 text-slate-400 group-hover:text-indigo-600" aria-hidden="true" />
+                <span>ເບິ່ງ / ແກ້ໄຂຂໍ້ມູນຜູ້ເຊົ່າ</span>
               </button>
 
-              {canCheckOut ? (
+              {!tenant.roomId ? (
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => setConfirming(true)}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+                  onClick={viewProfile}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 group"
                 >
-                  <LogOut className="size-4 shrink-0" aria-hidden="true" />
-                  {t.tenants.checkOut.trigger}
+                  <DoorOpen className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span>ມອບໝາຍຫ້ອງ / ເຮັດສັນຍາ (Check-in)</span>
                 </button>
               ) : null}
-            </>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={viewProfile}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 group"
+              >
+                <History className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                <span>ປະຫວັດສັນຍາ & ໃບບິນ</span>
+              </button>
+
+              {canCheckOut ? (
+                <>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => setConfirming(true)}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 group"
+                  >
+                    <LogOut className="size-3.5 shrink-0 text-rose-600" aria-hidden="true" />
+                    <span>{t.tenants.checkOut.trigger}</span>
+                  </button>
+                </>
+              ) : null}
+            </div>
           )}
         </div>
       ) : null}
