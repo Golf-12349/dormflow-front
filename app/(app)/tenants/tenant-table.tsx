@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils";
 import { TenantDetailDrawer } from "./tenant-detail-drawer";
 import { TenantRowMenu } from "./tenant-row-menu";
+import { EditTenantModal } from "@/components/tenants/edit-tenant-modal";
 import type { TenantLeaseHistoryItem } from "@/lib/api/dormflow";
 import type { Invoice, Room, Tenant, TenantStatus } from "@/types";
 
@@ -175,6 +176,7 @@ export function TenantTable({
    * forbid) and the value stays stable for the drawer's whole lifetime.
    */
   const [selected, setSelected] = useState<TenantSelection | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const tenantTrigger = useRef<HTMLElement | null>(null);
 
   /**
@@ -422,7 +424,11 @@ export function TenantTable({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <TenantRowMenu tenant={tenant} onOpen={openTenant} />
+                      <TenantRowMenu
+                        tenant={tenant}
+                        onOpen={openTenant}
+                        onEdit={(t) => setEditingTenant(t)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -431,6 +437,15 @@ export function TenantTable({
           </div>
         </div>
       )}
+
+      {/* Centered Popup Edit Tenant Modal */}
+      {editingTenant ? (
+        <EditTenantModal
+          isOpen={true}
+          tenant={editingTenant}
+          onClose={() => setEditingTenant(null)}
+        />
+      ) : null}
 
       {selected && selectedTenant ? (
         <TenantDetailDrawer
@@ -444,6 +459,7 @@ export function TenantTable({
           nowMs={selected.nowMs}
           initialMode={selected.mode}
           onClose={closeTenant}
+          onEdit={(t) => setEditingTenant(t)}
         />
       ) : null}
     </div>

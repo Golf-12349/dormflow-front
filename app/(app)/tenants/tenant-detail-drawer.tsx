@@ -56,6 +56,7 @@ interface TenantDetailDrawerProps {
   onClose: () => void;
   nowMs: number;
   initialMode?: "view" | "edit" | "assignRoom";
+  onEdit?: (tenant: Tenant) => void;
 }
 
 /** Derived 6.4 numbers: elapsed percent of the lease, days until it ends. */
@@ -115,6 +116,7 @@ export function TenantDetailDrawer({
   onClose,
   nowMs,
   initialMode = "view",
+  onEdit,
 }: TenantDetailDrawerProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -250,7 +252,10 @@ export function TenantDetailDrawer({
               {!isEditingContact ? (
                 <button
                   type="button"
-                  onClick={() => setIsEditingContact(true)}
+                  onClick={() => {
+                    if (onEdit) onEdit(tenant);
+                    else setIsEditingContact(true);
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
                 >
                   <Pencil className="size-3.5" aria-hidden="true" />

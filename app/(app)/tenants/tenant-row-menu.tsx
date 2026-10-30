@@ -40,6 +40,7 @@ const MENU_WIDTH_PX = 240;
 export function TenantRowMenu({
   tenant,
   onOpen,
+  onEdit,
 }: {
   tenant: Tenant;
   /** Opens the drawer with optional mode: 'view' | 'edit' | 'assignRoom'. */
@@ -48,6 +49,8 @@ export function TenantRowMenu({
     trigger: HTMLElement,
     mode?: "view" | "edit" | "assignRoom",
   ) => void;
+  /** Opens the centered Edit Tenant Modal popup. */
+  onEdit?: (tenant: Tenant) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -233,7 +236,11 @@ export function TenantRowMenu({
                 onClick={() => {
                   setIsOpen(false);
                   setConfirming(false);
-                  if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "edit");
+                  if (onEdit) {
+                    onEdit(tenant);
+                  } else if (triggerRef.current) {
+                    onOpen(tenant.id, triggerRef.current, "edit");
+                  }
                 }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 group"
               >
