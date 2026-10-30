@@ -196,7 +196,7 @@ export function TenantDetailDrawer({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-40"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
     >
       <ActionResultToast state={contactState} />
       <ActionResultToast state={checkOutState} />
@@ -204,16 +204,16 @@ export function TenantDetailDrawer({
         type="button"
         aria-label={t.tenants.profile.closeDetailsAria}
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
       />
 
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="scrollbar-thin absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl outline-none"
+        className="scrollbar-thin relative z-10 flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 outline-none animate-in fade-in-0 zoom-in-95 duration-150"
       >
         {/* Header: full name, status badge, close button */}
-        <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-5">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-5 bg-white shrink-0">
           <div>
             <h2
               id={titleId}
@@ -224,7 +224,7 @@ export function TenantDetailDrawer({
             <div className="mt-2">
               <span
                 className={cn(
-                  "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                  "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1",
                   TENANT_STATUS_BADGE_CLASSES[tenant.status],
                 )}
               >
@@ -236,13 +236,13 @@ export function TenantDetailDrawer({
             type="button"
             onClick={onClose}
             aria-label={t.tenants.profile.closeDetailsAria}
-            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
-            <X className="size-4" aria-hidden="true" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="space-y-6 p-5">
+        <div className="flex-1 space-y-6 p-6 overflow-y-auto">
           {/* Contact — 6.5: flips into an inline edit form (emergency fields included) */}
           <section>
             <div className="flex items-center justify-between gap-3">

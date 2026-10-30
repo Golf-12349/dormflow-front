@@ -53,7 +53,7 @@ export function TenantRowMenu({
   onEdit?: (tenant: Tenant) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [isCheckOutModalOpen, setIsCheckOutModalOpen] = useState(false);
   /**
    * Viewport coordinates for the popup, sampled from the trigger's rect when
    * it opens (event handlers may read the DOM; render may not). The menu
@@ -78,7 +78,6 @@ export function TenantRowMenu({
 
     function close() {
       setIsOpen(false);
-      setConfirming(false);
     }
 
     function handlePointerDown(event: MouseEvent) {
@@ -114,9 +113,7 @@ export function TenantRowMenu({
   function toggleMenu() {
     const next = !isOpen;
     setIsOpen(next);
-    // A stale confirmation/result from the previous open must not flash.
     if (next) {
-      setConfirming(false);
       const rect = triggerRef.current?.getBoundingClientRect();
       if (rect) {
         setAnchor({
@@ -129,7 +126,6 @@ export function TenantRowMenu({
 
   function viewProfile() {
     setIsOpen(false);
-    setConfirming(false);
     if (triggerRef.current) onOpen(tenant.id, triggerRef.current);
   }
 
@@ -169,38 +165,124 @@ export function TenantRowMenu({
           style={{ top: anchor?.top, left: anchor?.left }}
           className="fixed z-50 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-slate-900/5 animate-in fade-in-0 zoom-in-95 duration-100"
         >
-          {confirming ? (
-            <form action={formAction} className="space-y-2.5 p-2.5">
-              <input type="hidden" name="tenantId" value={tenant.id} />
+          <div className="space-y-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false);
+                if (onEdit) {
+                  onEdit(tenant);
+                } else if (triggerRef.current) {
+                  onOpen(tenant.id, triggerRef.current, "edit");
+                }
+              }}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 group"
+            >
+              <Pencil className="size-3.5 shrink-0 text-indigo-600" aria-hidden="true" />
+              <span>ແກ້ໄຂຂໍ້ມູນຜູ້ເຊົ່າ (Edit Profile)</span>
+            </button>
 
-              <p className="text-xs text-slate-600">
-                {t.tenants.checkOut.confirmPrompt(tenant.fullName)}
-              </p>
+            {!tenant.roomId ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "assignRoom");
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 group"
+              >
+                <DoorOpen className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <span>ມອບໝາຍຫ້ອງ / ເຮັດສັນຍາ (Check-in)</span>
+              </button>
+            ) : null}
 
-              <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false);
+                if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "view");
+              }}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 group"
+            >
+              <History className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+              <span>ປະຫວັດສັນຍາ & ໃບບິນ</span>
+            </button>
+
+            {canCheckOut ? (
+              <>
+                <div className="my-1 border-t border-slate-100" />
                 <button
                   type="button"
-                  onClick={() => setConfirming(false)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsCheckOutModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 group"
+                >
+                  <LogOut className="size-3.5 shrink-0 text-rose-600" aria-hidden="true" />
+                  <span>{t.tenants.checkOut.trigger}</span>
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Centered Check-out Confirmation Modal */}
+      {isCheckOutModalOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => !isPending && setIsCheckOutModalOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in-0 zoom-in-95 duration-150">
+            <div className="flex items-start gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                <LogOut className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  {t.tenants.checkOut.trigger}
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {t.tenants.checkOut.confirmPrompt(tenant.fullName)}
+                </p>
+              </div>
+            </div>
+
+            <form action={formAction} className="mt-6 space-y-4">
+              <input type="hidden" name="tenantId" value={tenant.id} />
+
+              <div className="flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setIsCheckOutModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   {t.tenants.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:opacity-60"
                 >
                   {isPending ? (
                     <>
-                      <Loader2
-                        className="size-3.5 animate-spin"
-                        aria-hidden="true"
-                      />
+                      <Loader2 className="size-3.5 animate-spin" />
                       <span>{t.tenants.checkOut.saving}</span>
                     </>
                   ) : (
                     <>
-                      <LogOut className="size-3.5" aria-hidden="true" />
+                      <LogOut className="size-3.5" />
                       <span>{t.tenants.checkOut.confirm}</span>
                     </>
                   )}
@@ -212,88 +294,20 @@ export function TenantRowMenu({
                   role="status"
                   aria-live="polite"
                   className={cn(
-                    "rounded-lg border p-2 text-xs",
+                    "rounded-xl border p-3 text-xs flex items-start gap-2",
                     state.status === "success"
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                       : "border-rose-200 bg-rose-50 text-rose-700",
                   )}
                 >
                   {state.status === "success" ? (
-                    <CheckCircle2
-                      className="size-3.5 shrink-0 text-emerald-600"
-                      aria-hidden="true"
-                    />
+                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600 mt-0.5" />
                   ) : null}
                   <p>{state.message}</p>
                 </div>
               ) : null}
             </form>
-          ) : (
-            <div className="space-y-1">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setIsOpen(false);
-                  setConfirming(false);
-                  if (onEdit) {
-                    onEdit(tenant);
-                  } else if (triggerRef.current) {
-                    onOpen(tenant.id, triggerRef.current, "edit");
-                  }
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 group"
-              >
-                <Pencil className="size-3.5 shrink-0 text-indigo-600" aria-hidden="true" />
-                <span>ແກ້ໄຂຂໍ້ມູນຜູ້ເຊົ່າ (Edit Profile)</span>
-              </button>
-
-              {!tenant.roomId ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setIsOpen(false);
-                    setConfirming(false);
-                    if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "assignRoom");
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 group"
-                >
-                  <DoorOpen className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                  <span>ມອບໝາຍຫ້ອງ / ເຮັດສັນຍາ (Check-in)</span>
-                </button>
-              ) : null}
-
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setIsOpen(false);
-                  setConfirming(false);
-                  if (triggerRef.current) onOpen(tenant.id, triggerRef.current, "view");
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 group"
-              >
-                <History className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
-                <span>ປະຫວັດສັນຍາ & ໃບບິນ</span>
-              </button>
-
-              {canCheckOut ? (
-                <>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => setConfirming(true)}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 group"
-                  >
-                    <LogOut className="size-3.5 shrink-0 text-rose-600" aria-hidden="true" />
-                    <span>{t.tenants.checkOut.trigger}</span>
-                  </button>
-                </>
-              ) : null}
-            </div>
-          )}
+          </div>
         </div>
       ) : null}
     </div>
