@@ -40,6 +40,8 @@ interface MeterEntryProps {
   periodLabel: string;
   canRecord: boolean;
   rates: { electricPerKwh: number; waterPerCubicMeter: number };
+  activeTab?: UtilityTypeTab;
+  hideTabs?: boolean;
 }
 
 type Rates = MeterEntryProps["rates"];
@@ -66,9 +68,13 @@ export function MeterEntry({
   periodLabel,
   canRecord,
   rates,
+  activeTab,
+  hideTabs = false,
 }: MeterEntryProps) {
   const [viewMode, setViewMode] = useState<"sheet" | "cards">("sheet");
-  const [utilityTab, setUtilityTab] = useState<UtilityTypeTab>("electric");
+  const [internalTab, setInternalTab] = useState<UtilityTypeTab>("electric");
+  const utilityTab = activeTab ?? internalTab;
+  const setUtilityTab = setInternalTab;
   const done = rooms.filter((entry) => entry.kind.kind === "recorded").length;
 
   return (
@@ -126,88 +132,90 @@ export function MeterEntry({
       </div>
 
       {/* Utility Pill Tabs Bar (EDL-DMS reference style) */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xs">
-        <button
-          type="button"
-          onClick={() => setUtilityTab("electric")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
-            utilityTab === "electric"
-              ? "border border-amber-300 bg-amber-50/80 text-amber-900 shadow-xs"
-              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-          )}
-        >
-          <Zap
+      {!hideTabs ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setUtilityTab("electric")}
             className={cn(
-              "size-4",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
               utilityTab === "electric"
-                ? "fill-amber-500 text-amber-600"
-                : "text-slate-400",
-            )}
-          />
-          <span>1. ມິເຕີໄຟຟ້າ (Electricity)</span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs font-bold",
-              utilityTab === "electric"
-                ? "bg-amber-100 text-amber-800"
-                : "bg-slate-100 text-slate-500",
+                ? "border border-amber-300 bg-amber-50/80 text-amber-900 shadow-xs"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
             )}
           >
-            {rooms.length}
-          </span>
-        </button>
+            <Zap
+              className={cn(
+                "size-4",
+                utilityTab === "electric"
+                  ? "fill-amber-500 text-amber-600"
+                  : "text-slate-400",
+              )}
+            />
+            <span>1. ມິເຕີໄຟຟ້າ (Electricity)</span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                utilityTab === "electric"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-slate-100 text-slate-500",
+              )}
+            >
+              {rooms.length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setUtilityTab("water")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
-            utilityTab === "water"
-              ? "border border-sky-300 bg-sky-50/80 text-sky-900 shadow-xs"
-              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-          )}
-        >
-          <Droplets
+          <button
+            type="button"
+            onClick={() => setUtilityTab("water")}
             className={cn(
-              "size-4",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
               utilityTab === "water"
-                ? "fill-sky-500 text-sky-600"
-                : "text-slate-400",
-            )}
-          />
-          <span>2. ມິເຕີນ້ຳປະປາ (Water)</span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs font-bold",
-              utilityTab === "water"
-                ? "bg-sky-100 text-sky-800"
-                : "bg-slate-100 text-slate-500",
+                ? "border border-sky-300 bg-sky-50/80 text-sky-900 shadow-xs"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
             )}
           >
-            {rooms.length}
-          </span>
-        </button>
+            <Droplets
+              className={cn(
+                "size-4",
+                utilityTab === "water"
+                  ? "fill-sky-500 text-sky-600"
+                  : "text-slate-400",
+              )}
+            />
+            <span>2. ມິເຕີນ້ຳປະປາ (Water)</span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                utilityTab === "water"
+                  ? "bg-sky-100 text-sky-800"
+                  : "bg-slate-100 text-slate-500",
+              )}
+            >
+              {rooms.length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setUtilityTab("all")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
-            utilityTab === "all"
-              ? "border border-indigo-300 bg-indigo-50/80 text-indigo-900 shadow-xs"
-              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-          )}
-        >
-          <Layers
+          <button
+            type="button"
+            onClick={() => setUtilityTab("all")}
             className={cn(
-              "size-4",
-              utilityTab === "all" ? "text-indigo-600" : "text-slate-400",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition sm:text-sm",
+              utilityTab === "all"
+                ? "border border-indigo-300 bg-indigo-50/80 text-indigo-900 shadow-xs"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
             )}
-          />
-          <span>3. ລວມທັງໝົດ (All in One)</span>
-        </button>
-      </div>
+          >
+            <Layers
+              className={cn(
+                "size-4",
+                utilityTab === "all" ? "text-indigo-600" : "text-slate-400",
+              )}
+            />
+            <span>3. ລວມທັງໝົດ (All in One)</span>
+          </button>
+        </div>
+      ) : null}
       {rooms.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
           {t.billing.meter.empty}

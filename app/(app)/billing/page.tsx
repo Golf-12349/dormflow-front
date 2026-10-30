@@ -16,8 +16,8 @@ import { formatCurrency, formatPeriod, formatUnitPrice } from "@/lib/utils";
 import type { Invoice, Room, UtilityReading } from "@/types";
 import { InvoiceGeneration, type InvoiceRoom } from "./invoice-generation";
 import { InvoiceList } from "./invoice-list";
-import { MeterEntry, type MeterRoom } from "./meter-entry";
-import { UtilityRateSettings } from "./utility-rate-settings";
+import { type MeterRoom } from "./meter-entry";
+import { BillingUtilitySection } from "./billing-utility-section";
 
 export const metadata: Metadata = {
   title: t.nav.billing,
@@ -149,14 +149,12 @@ export default async function BillingPage({
         ))}
       </div>
 
-      <UtilityRateSettings rates={rates} />
-
-      <MeterEntry
+      <BillingUtilitySection
+        rates={rates}
         rooms={rooms}
         period={period}
         periodLabel={periodLabel}
         canRecord={canRecord}
-        rates={rates}
       />
 
       <InvoiceGeneration
